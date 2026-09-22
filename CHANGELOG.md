@@ -59,5 +59,15 @@ restriction n'est livrée.
 - `uninstall.php`, sans effet à ce stade, mais en place avant le premier
   réglage écrit.
 - Documentation complète du projet dans `docs/` : cahier des charges,
-  architecture, stratégie de test, sécurité, journal empirique et sept décisions
+  architecture, stratégie de test, sécurité, journal empirique et huit décisions
   d'architecture.
+
+### Décidé
+
+- Le slug `ip-restriction-for-restrict-content` est conservé : il commence par
+  une fonction générique, et la directive 17 du répertoire WordPress.org
+  n'interdit que le début du slug. Le text domain, le namespace et les préfixes
+  restent inchangés (ADR-0008).
+- La mention de non-affiliation est maintenue dans l'en-tête du plugin et dans
+  le `README.md` : elle répond à une exigence distincte de la conformité du
+  slug (cahier des charges §14.3).

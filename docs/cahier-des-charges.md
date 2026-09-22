@@ -1128,6 +1128,32 @@ répertoire WordPress.org) : l'autoloader est embarqué, et le fichier principal
 porte déjà un autoloader PSR-4 de repli pour qu'une copie de travail sans
 `vendor/` reste activable.
 
+### §14.3 Nommage et non-affiliation — deux exigences distinctes
+
+Le plugin est destiné au répertoire WordPress.org. Deux exigences s'y appliquent,
+que la ressemblance de sujet fait souvent confondre. **Satisfaire l'une ne
+dispense jamais de l'autre.**
+
+| | Conformité du slug | Mention de non-affiliation |
+|---|---|---|
+| Ce qu'elle traite | La **forme** du nom : ce qui est en tête du slug | L'**impression** produite : qui édite ce plugin |
+| Ce qu'elle empêche | Qu'un slug s'approprie la marque d'autrui | Qu'un utilisateur croie installer un produit officiel de l'éditeur |
+| Qui l'impose | Directive 17 du répertoire | Le droit des marques, et l'honnêteté envers l'utilisateur |
+| Où elle s'exerce | Le slug, une fois | La description de l'en-tête, le `readme.txt`, le `README.md` |
+| État | **Satisfaite** : le slug commence par `ip-restriction`, une fonction générique (ADR-0008) | **Satisfaite** : mention présente dans l'en-tête du plugin (ligne 5) et en tête du `README.md` |
+
+La formulation retenue, identique aux deux endroits :
+
+> Extension indépendante, ni développée ni approuvée par les éditeurs de
+> Restrict Content ou de Restrict Content Pro.
+
+**Avertissement au successeur.** Constater que le slug est conforme n'autorise
+pas à retirer la mention : un slug conforme ne dit rien de l'éditeur du plugin.
+Réciproquement, ajouter la mention ne rendrait pas conforme un slug qui
+commencerait par une marque. Les deux se vérifient séparément, au lot 10.
+
+---
+
 ---
 
 ## §15 Points ouverts
@@ -1141,7 +1167,7 @@ section est ce qui empêche de présenter une hypothèse comme un acquis.
 |---|---|---|---|
 | **O-01** | Forme du préfixe | **tranchée** | ADR-0001. Forme longue pour les symboles globaux et les hooks, forme courte `RCIPR_` pour les constantes, métas et chaînes de balisage |
 | **O-02** | Planchers PHP et WordPress | **tranchée** | ADR-0002. PHP 8.1, WordPress 6.4 |
-| **O-03** | Slug et marque tierce (directive 17 de WordPress.org) | **ouverte** | Le slug retenu est `ip-restriction-for-restrict-content`, de la forme « fonction pour marque », qui est celle que la directive 17 autorise : le slug ne **commence** pas par la marque d'autrui. Trois options subsistent. **(a)** Conserver le slug : conforme à la forme prescrite, mais le nom porte une marque dont l'éditeur peut demander le retrait. **(b)** Renommer sans la marque, par exemple `ip-access-rules-for-memberships` : lève tout risque, au prix de la découvrabilité. **(c)** Demander une autorisation écrite à l'éditeur avant soumission : lève le risque et conserve la découvrabilité, mais dépend d'un tiers. Conséquence commune : le slug conditionne le text domain, le namespace et la forme longue du préfixe, donc un renommage après le lot 1 est coûteux. **À trancher avant la première soumission au répertoire, au plus tard au lot 10** |
+| **O-03** | Slug et marque tierce (directive 17 de WordPress.org) | **tranchée le 22 septembre 2026** | ADR-0008. **Le slug est conservé.** La directive 17 n'interdit que le **début** du slug : `ip-restriction-for-restrict-content` commence par une fonction générique, et la mention de la marque après « for » est précisément la forme recommandée. Renommer se serait écarté de la recommandation pour se prémunir d'une règle inapplicable, au prix de la découvrabilité et d'une migration de text domain, de namespace et de préfixes (ADR-0001). La mention de non-affiliation est **maintenue** : elle traite une exigence distincte (§14.3). Révision si le produit amont change de nom ou si l'éditeur réclame |
 | **O-04** | Stockage du réglage de niveau | **tranchée** | ADR-0004. Métadonnée de niveau via l'API de la dépendance |
 | **O-05** | Étendue du support IPv6 | **tranchée** | ADR-0005. Littéral et CIDR IPv6 ; jokers et plages à bornes jokers **refusés** en IPv6 |
 | **O-06** | Sémantique de la plage à bornes jokers | **tranchée provisoirement** | §4.3 : la borne gauche prend son minimum, la borne droite son maximum. La documentation amont donne l'exemple `149.58.*-149.60.*` sans le définir. Autre lecture possible : intersection du joker et de la plage, qui exclurait `149.59.x.x`. La lecture retenue est la seule compatible avec le caractère inclusif documenté des plages, mais elle n'est pas établie par la source. **À confirmer en recette au lot 2 ; si le doute persiste, documenter la sémantique retenue dans la documentation utilisateur plutôt que de l'inventer** |

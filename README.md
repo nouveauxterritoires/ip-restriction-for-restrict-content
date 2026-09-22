@@ -109,6 +109,7 @@ archive dans `vendor-plugins/`, ou désignez un répertoire décompressé par
 | [0005](docs/adr/0005-etendue-du-support-ipv6.md) | Étendue du support IPv6 |
 | [0006](docs/adr/0006-adresse-du-visiteur.md) | `REMOTE_ADDR` par défaut, en-tête sur déclaration explicite |
 | [0007](docs/adr/0007-asymetrie-des-deux-listes.md) | Les deux listes ne partagent ni stockage ni chemin de décision |
+| [0008](docs/adr/0008-slug-et-mention-de-non-affiliation.md) | Slug conservé, mention de non-affiliation maintenue |
 
 ---
 
@@ -123,10 +124,14 @@ archive dans `vendor-plugins/`, ou désignez un répertoire décompressé par
 | Text domain | `ip-restriction-for-restrict-content` |
 | Port de développement | 8082 |
 
-Le nom du plugin mentionne une marque tierce. La forme retenue — « fonction pour
-marque » — est celle qu'autorise la directive 17 du répertoire WordPress.org,
-mais la question n'est pas close : elle est tenue comme décision ouverte `O-03`
-au cahier des charges §15.1.
+Le slug commence par `ip-restriction`, une fonction générique, et mentionne la
+marque après « for » : c'est la forme que recommande la directive 17 du
+répertoire WordPress.org, qui n'interdit que le **début** du slug. Le nommage
+est donc arrêté — voir [ADR-0008](docs/adr/0008-slug-et-mention-de-non-affiliation.md).
+
+La mention de non-affiliation en tête de ce document reste nécessaire : elle
+répond à une exigence distincte de la conformité du slug, et l'une ne dispense
+pas de l'autre (cahier des charges §14.3).
 
 ---
 

@@ -9,7 +9,7 @@
 
 La directive 17 du répertoire WordPress.org impose la forme « fonction pour
 marque » lorsqu'un nom de plugin mentionne une marque tierce : le slug retenu
-est `ip-restriction-for-restrict-content`, soit 38 caractères. La forme longue
+est `ip-restriction-for-restrict-content`, soit 35 caractères. La forme longue
 du préfixe qui en dérive — `ip_restriction_for_restrict_content_` — fait
 36 caractères à elle seule, ce qui produit des noms de hooks longs.
 
@@ -67,6 +67,11 @@ chaque ligne de la table de métadonnées : la longueur y a un coût réel.
 
 ## Conditions de révision
 
-Un renommage du slug (O-03) entraîne mécaniquement un renommage de la forme
-longue et du namespace. C'est la raison pour laquelle O-03 doit être tranché
-**avant** le lot 1 si possible, et au plus tard au lot 10.
+Un renommage du slug entraînerait mécaniquement un renommage de la forme longue
+et du namespace. C'est pourquoi la question du slug a été instruite séparément
+et tranchée avant le lot 1 : **le slug est conservé** (ADR-0008, O-03 clos). Le
+présent ADR n'est donc pas exposé à une migration de nommage.
+
+Il le redeviendrait si l'une des deux conditions de révision d'ADR-0008 se
+réalisait — changement de nom du produit amont, ou réclamation de l'éditeur.
+Dans ce cas, les deux ADR se révisent ensemble, jamais l'un sans l'autre.
