@@ -11,11 +11,20 @@ en développement piloté par les tests, exigence par exigence.
 **Règle de lecture.** Une affirmation technique est soit sourcée — URL de
 documentation, ou chemin de fichier et numéro de ligne dans la source réelle de
 la dépendance — soit portée en §15 comme point ouvert. Il n'y a pas de troisième
-catégorie. Les chemins cités sous la forme `core/…` ou `pro/…` se lisent depuis
-`~/WORK/rcp-stripe-sepa/ressources/restrict-content-pro/` (checkout complet de
-Restrict Content Pro v3.5.51) ; le fichier `restrict-content.stub.php` se lit
-depuis `~/WORK/rcp-group-accounts/stubs/` (stub généré depuis une installation
-réelle de la variante gratuite, v4.0.4).
+catégorie. Trois sources locales sont citées, et la distinction compte :
+
+| Notation | Source | Version |
+|---|---|---|
+| **RC** `core/…`, `restrictcontent.php` | `~/WORK/ressources-restrict-content/restrict-content/` — variante **gratuite** | 4.0.4 |
+| **RCP** `core/…`, `pro/…` | `~/WORK/rcp-stripe-sepa/ressources/restrict-content-pro/` — variante **commerciale** | 3.5.51 |
+| `restrict-content.stub.php` | `~/WORK/rcp-group-accounts/stubs/` — stub généré depuis une installation réelle de la variante gratuite | 4.0.4 |
+
+Quand une ligne est citée sans préfixe, elle vaut pour les deux variantes à la
+même position. Quand les positions diffèrent, les deux sont données.
+
+Lire ces sources ne contrevient pas au §0.3 : ce qui est interdit est la lecture
+du code de l'**add-on commercial** IP Restriction, pas celle de la dépendance,
+dont la lecture est au contraire la méthode prescrite par les conventions §11.
 
 ---
 
@@ -98,11 +107,22 @@ voir JE-003.
 | Moderne (`core/`, 7,3 Mo) | Toutes les fonctions `rcp_*` du §5.1 | Oui |
 | Historique (`legacy/`, 716 Ko) | **Aucune** des fonctions `rcp_*` vérifiées | **Non, en aucune façon** |
 
-Le choix est fait **une seule fois**, à la première activation, par
-`RC_Requirements_Check::load()` (`restrictcontent.php`, lignes 185-215), puis
-persisté dans l'option `restrict_content_chosen_version`. Une installation qui
-portait l'option `rc_settings` ou une métadonnée `rcp_user_level` bascule sur la
-branche historique — et y reste.
+Le choix initial est fait par `RC_Requirements_Check::load()`
+(`restrictcontent.php`, lignes 186-215) et persisté dans l'option
+`restrict_content_chosen_version`. Une installation qui portait l'option
+`rc_settings` ou une métadonnée `rcp_user_level` part sur la branche historique.
+
+**Et ce choix est réversible à tout moment.** `restrictcontent.php` expose un
+gestionnaire AJAX, `rc_process_legacy_switch()` (ligne 676), enregistré sur
+`wp_ajax_rc_process_legacy_switch` (ligne 731) et protégé par la capacité
+`manage_options` (ligne 680) et le nonce `rc_process_legacy_nonce` (ligne 681),
+qui retourne l'option d'une branche à l'autre (lignes 695 et 706). La branche
+chargée n'est donc **pas une propriété de l'installation** : c'est un état
+mutable, qui peut changer entre deux requêtes.
+
+La bascule est protégée par une capacité et un nonce : ce n'est pas une faille,
+c'est une fonctionnalité — et c'est précisément pour cela qu'il faut en tenir
+compte.
 
 Trois conséquences, portées partout dans ce document :
 
@@ -111,8 +131,16 @@ Trois conséquences, portées partout dans ce document :
 | B-01 | Un site en branche historique est un site où ce plugin ne peut pas fonctionner. Ce n'est pas un cas dégradé : l'API n'existe pas dans le processus |
 | B-02 | **Ni le nom du plugin, ni son numéro de version, ni la constante `RC_PLUGIN_VERSION` ne disent quelle branche est en mémoire.** Seule la présence effective des fonctions appelées le dit. La règle « détecter les capacités, pas les versions » des conventions de développement §2 n'est donc pas une précaution de style : c'est la seule méthode qui fonctionne, et JE-003 en est la validation empirique |
 | B-03 | Le routage entre les deux branches repose en partie sur une requête SQL invalide côté amont (JE-003). Elle peut être corrigée à tout moment, ce qui changerait le routage des installations ultérieures. Aucun code de ce plugin ne doit en dépendre, et la suite `contract` surveille le point |
+| B-04 | **La présence de la dépendance est une propriété de la requête, pas de l'installation.** Elle peut être vraie à une requête et fausse à la suivante, sans désactivation ni mise à jour d'aucun plugin. Toute la §5.2 en découle |
 
 ### §1.2 Ce que fournit la variante gratuite
+
+Fait annexe, mais qui illustre B-02 : l'en-tête de `restrictcontent.php`
+(lignes 3 et 6) annonce `Plugin Name: Kadence Memberships`, version 4.0.4, et
+son écran de réglages s'intitule « Kadence Memberships Pro Settings »
+(RC `core/includes/admin/admin-pages.php:28`). Le plugin dont ce plugin dépend
+ne porte pas le nom sous lequel on le cherche : une détection par nom aurait
+échoué avant même d'atteindre la question des branches.
 
 **Vérifié dans le stub v4.0.4** :
 
@@ -457,32 +485,48 @@ lui-même.
 ### §5.1 Capacités requises, et où elles sont établies
 
 Toutes les capacités de ce tableau sont dans `core/`, donc disponibles dans les
-deux variantes. Aucune capacité de `pro/` n'est requise — et c'est le résultat
-le plus important de l'instruction du dossier.
+deux variantes. Aucune capacité de `pro/` n'est requise — et c'est le résultat le
+plus important de l'instruction du dossier.
 
-| Capacité | Rôle pour ce plugin | Fichier et ligne |
-|---|---|---|
-| `rcp_user_can_access()` | Fonction par laquelle la dépendance décide l'accès à un contenu | `core/includes/member-functions.php:70` |
-| Filtre `rcp_member_can_access` — chemin **déconnecté** | Point d'accroche de FNC-05 : accorder l'accès à un visiteur sans compte | `core/includes/member-functions.php:101` |
-| Filtre `rcp_member_can_access` — chemin **connecté** | Même accroche pour un visiteur ayant un compte client | `core/includes/customers/class-rcp-customer.php:772, 777, 786, 791, 806` |
-| Filtre `rcp_member_can_access` — chemin historique | Même accroche sur l'objet `RCP_Member` | `core/includes/class-rcp-member.php:970, 975, 987` |
-| Filtre `rcp_get_term_restrictions` | Seule accroche disponible pour les restrictions de **taxonomie** | `core/includes/misc-functions.php:998` |
-| Action `rcp_form_errors` | Point d'accroche de FNC-07 : ajouter une erreur qui annule l'inscription | `core/includes/registration-functions.php:148` |
-| `rcp_errors()` | Collecteur d'erreurs `WP_Error` du formulaire d'inscription | `core/includes/error-tracking.php:19` |
-| Action `rcp_edit_subscription_form` | Point d'accroche de FNC-25 sur l'écran d'édition d'un niveau | `core/includes/admin/subscriptions/edit-subscription.php:164` |
-| Action `rcp_add_subscription_form` | Même champ sur l'écran de création d'un niveau | `core/includes/admin/subscriptions/subscription-levels.php:195` |
-| Action `rcp_edit_subscription_level` | Enregistrement du champ de niveau | `core/includes/membership-levels/membership-level-functions.php:381` |
-| Action `rcp_add_subscription` | Enregistrement à la création d'un niveau | `core/includes/membership-levels/membership-level-functions.php:278` |
-| API de métadonnées de niveau | Stockage du champ de niveau (ADR-0004) | `core/includes/levels/meta.php:26, 69, 94` |
-| Actions `rcp_metabox_fields_before` / `_after` | Point d'accroche de FNC-26 dans la boîte de restriction de l'éditeur | `core/includes/admin/metabox.php:77, 81` |
-| Action `rcp_metabox_additional_options_before` | Variante de placement dans le même écran | `core/includes/admin/metabox-view.php:104` |
-| Action `rcp_save_post_meta` | Enregistrement du champ de contenu | `core/includes/admin/metabox.php:226` |
-| Capacité `rcp_manage_settings` | Capacité qui garde l'écran de réglages de la dépendance, réutilisée par FNC-24 | `core/includes/admin/admin-pages.php:28` ; accordée à l'administrateur en `core/includes/class-rcp-capabilities.php:53` |
-| `rcp_get_membership_levels()` | Sonde de présence de la dépendance, déjà en place | `restrict-content.stub.php:28024` |
+Chaque ligne est vérifiée **dans les deux sources**, la variante gratuite (RC
+4.0.4) et la variante commerciale (RCP 3.5.51). Les positions coïncident presque
+partout ; là où elles diffèrent, les deux sont données, et cette divergence est
+en soi une information — elle mesure la dérive entre les deux distributions d'un
+même noyau, et c'est ce que la suite `contract` surveille.
+
+| Capacité | Rôle pour ce plugin | Fichier | RC 4.0.4 | RCP 3.5.51 |
+|---|---|---|---|---|
+| `rcp_user_can_access()` | Fonction par laquelle la dépendance décide l'accès à un contenu | `core/includes/member-functions.php` | 70 | 70 |
+| Filtre `rcp_member_can_access` — chemin **déconnecté** | Point d'accroche de FNC-05 : accorder l'accès à un visiteur sans compte | `core/includes/member-functions.php` | **101** | **101** |
+| Filtre `rcp_member_can_access` — chemin **connecté** | Même accroche pour un visiteur ayant un compte client | `core/includes/customers/class-rcp-customer.php` | 772, 777, 786, 791, 806 | idem |
+| Filtre `rcp_member_can_access` — chemin historique | Même accroche sur l'objet `RCP_Member` | `core/includes/class-rcp-member.php` | 970, 975, 987 | idem |
+| Filtre `rcp_get_term_restrictions` | Seule accroche disponible pour les restrictions de **taxonomie** (§5.1.1) | `core/includes/misc-functions.php` | 1002 | 998 |
+| Action `rcp_form_errors` | Point d'accroche de FNC-07 : ajouter une erreur qui annule l'inscription | `core/includes/registration-functions.php` | **164** | **148** |
+| Action `rcp_before_form_errors` | Accroche plus précoce, non retenue : elle précède la validation du niveau | `core/includes/registration-functions.php` | 93 | 93 |
+| `rcp_errors()` | Collecteur d'erreurs `WP_Error` du formulaire d'inscription | `core/includes/error-tracking.php` | 19 | 19 |
+| Collecte et renvoi des erreurs | Établit que le message remonte en JSON, sans rechargement (§7.5) | `core/includes/registration-functions.php` | 167, 175 | 151, 158 |
+| Action `rcp_edit_subscription_form` | Point d'accroche de FNC-25 sur l'écran d'édition d'un niveau | `core/includes/admin/subscriptions/edit-subscription.php` | 164 | 164 |
+| Action `rcp_add_subscription_form` | Même champ sur l'écran de création d'un niveau | `core/includes/admin/subscriptions/subscription-levels.php` | 195 | 195 |
+| Action `rcp_edit_subscription_level` | Enregistrement du champ de niveau | `core/includes/membership-levels/membership-level-functions.php` | 381 | 381 |
+| Action `rcp_add_subscription` | Enregistrement à la création d'un niveau | `core/includes/membership-levels/membership-level-functions.php` | 278 | 278 |
+| API de métadonnées de niveau | Stockage du champ de niveau (ADR-0004) | `core/includes/levels/meta.php` | 26, 48, 69, 94 | idem |
+| Actions `rcp_metabox_fields_before` / `_after` | Point d'accroche de FNC-26 dans la boîte de restriction de l'éditeur | `core/includes/admin/metabox.php` | 77, 81 | 77, 81 |
+| Action `rcp_metabox_additional_options_before` | Variante de placement dans le même écran | `core/includes/admin/metabox-view.php` | 104 | 104 |
+| Action `rcp_save_post_meta` | Enregistrement du champ de contenu | `core/includes/admin/metabox.php` | 226 | 226 |
+| Capacité `rcp_manage_settings` | Capacité qui garde l'écran de réglages de la dépendance, réutilisée par FNC-24 | `core/includes/admin/admin-pages.php` (écran) et `core/includes/class-rcp-capabilities.php` (attribution) | 28 ; 53 | 28 ; 53 |
+| Filtre `rcp_is_restricted_content` | Non retenu comme accroche, mais utile au diagnostic | `core/includes/misc-functions.php` | 815 | 811 |
+| `rcp_get_membership_levels()` | Sonde de présence de la dépendance, déjà en place | `core/includes/membership-levels/…` ; stub | présente | présente |
+
+Deux divergences de position méritent d'être notées : `rcp_form_errors` est
+16 lignes plus bas dans la variante gratuite, et `rcp_get_term_restrictions`
+4 lignes plus bas. Aucune ne change de nom, de signature ni d'ordre
+d'application. C'est le rappel qu'un numéro de ligne datte une **preuve**, et ne
+constitue jamais un contrat : le contrat, c'est la suite `contract`.
 
 **Le commentaire qui confirme l'intention amont.** À
-`core/includes/member-functions.php:100`, juste avant l'application du filtre,
-le noyau porte ce commentaire :
+`core/includes/member-functions.php:100` — à la même ligne dans les deux
+variantes —, juste avant l'application du filtre, le noyau porte ce
+commentaire :
 
 > « We need to apply the filter here so that it can be used on logged-out users,
 > like in IP Restriction. »
@@ -490,6 +534,10 @@ le noyau porte ce commentaire :
 C'est la preuve la plus forte disponible : le noyau libre expose délibérément ce
 filtre sur le chemin déconnecté **pour cet usage précis**. Le point d'accroche
 de FNC-05 n'est pas un détournement.
+
+Ce commentaire et le `apply_filters` qui le suit sont lus **directement dans la
+source de la variante gratuite**, et non déduits d'un stub. Le point ouvert V-07,
+qui portait ce doute, est levé (§15.2).
 
 **Le précédent d'usage.** Le noyau lui-même consomme ce filtre pour une
 intégration tierce : `core/includes/integrations/class-rcp-wp-approve-user.php:38`
@@ -544,6 +592,40 @@ Un filtre ne se sonde pas par introspection : on ne peut pas savoir qu'un
 `contract` (§11.2) établit chaque accroche **par l'exécution** : elle branche un
 témoin, provoque le chemin, et constate que le témoin a été appelé.
 
+#### §5.2.1 La sonde n'est jamais mémorisée
+
+C'est l'exigence que le constat JE-003 rend indispensable, et elle est
+contre-intuitive : sonder l'environnement à chaque requête ressemble à du
+gaspillage, et la première optimisation qui vienne à l'esprit est de retenir le
+résultat.
+
+**Il ne faut pas.** La branche chargée par la dépendance est un état mutable, que
+l'administrateur retourne depuis un écran, sans désactiver ni mettre à jour quoi
+que ce soit (§1.1, B-04). Une présence constatée à une requête peut être fausse à
+la suivante.
+
+| Réf. | Exigence |
+|---|---|
+| **P-01** | Le résultat de la sonde n'est **jamais** persisté : ni option, ni métadonnée, ni transient, ni fichier de cache |
+| **P-02** | Le résultat de la sonde n'est **jamais** décidé à l'activation. Le crochet d'activation ne conclut rien sur l'environnement d'exécution des requêtes suivantes |
+| **P-03** | Le contrôle des prérequis a lieu **à chaque requête**, sur `plugins_loaded`. Ce n'est pas un détail d'implémentation : c'est une propriété à préserver, et un test la vérifie |
+| **P-04** | Une bascule de branche produit, dès la requête suivante, l'avis de E-05 — sans qu'aucune action d'administration ni réenregistrement ne soit nécessaire |
+
+La mémorisation **au sein d'une même requête** reste permise et souhaitable : la
+sonde conclut une fois, et son résultat circule en mémoire. C'est la frontière
+exacte — la requête — et elle n'est pas négociable.
+
+Pourquoi le défaut serait grave et non seulement gênant : un plugin qui aurait
+écrit « la dépendance est présente » à l'activation continuerait d'enregistrer
+ses filtres après une bascule, sur une API absente. Le premier appel produirait
+une erreur fatale — exactement ce que le §5.3 existe pour empêcher. L'économie
+d'une poignée d'appels à `function_exists()` se paierait en écran blanc.
+
+P-03 est vérifié par la suite `integration` : le plugin est amorcé, l'option
+`restrict_content_chosen_version` est retournée, le plugin est réamorcé, et
+l'avis attendu apparaît. Le test inspecte en outre les options et les transients
+du site après amorçage, et échoue si le plugin en a écrit un seul.
+
 ### §5.3 Échec propre
 
 | Réf. | Règle |
@@ -552,7 +634,7 @@ témoin, provoque le chemin, et constate que le témoin a été appelé.
 | E-02 | Aucune classe métier n'est chargée avant que la sonde n'ait conclu |
 | E-03 | Un prérequis absent ne change pas le comportement du site : le contenu reste régi par la dépendance, le formulaire d'inscription reste ouvert |
 | E-04 | Une capacité d'accroche absente désactive la fonctionnalité qui en dépend, et la nomme dans l'avis — sans désactiver les autres |
-| E-05 | L'avis nomme la **cause constatée**, pas la cause supposée. En particulier, un site dont la dépendance est active mais charge sa branche historique reçoit un avis qui le dit, et non « dépendance absente » (§1.1, JE-003) |
+| E-05 | L'avis nomme la **cause constatée**, pas la cause supposée. En particulier, un site dont la dépendance est active mais charge sa branche historique reçoit un avis qui le dit, et non « dépendance absente » (§1.1, §5.2.1, JE-003) |
 
 E-01 et E-02 sont livrés au lot 0 : `src/Plugin.php`,
 `src/Admin/Requirements_Notice.php`, et l'amorçage en priorité 20 sur
@@ -578,6 +660,13 @@ le plugin de la dépendance est-il actif. Elle ne lit **pas** l'option
 d'implémentation amont, susceptible de changer, et B-02 pose que seule la
 capacité fait foi. L'option peut en revanche être citée dans l'avis, à titre
 d'indication pour l'administrateur.
+
+L'avis est en outre le seul canal utile, parce que **celui qui vient de basculer
+est exactement celui qui peut revenir en arrière** : la bascule exige
+`manage_options` (`restrictcontent.php:680`), et l'avis de prérequis n'est rendu
+qu'à qui détient `activate_plugins` (`src/Admin/Requirements_Notice.php`). Les
+deux publics coïncident en pratique. L'avis nomme donc l'action de retour, et non
+seulement la cause.
 
 ---
 
@@ -823,6 +912,12 @@ d'erreur PHP, les écrans se rendent, les réglages survivent à un aller-retour
 d'enregistrement, aucune requête HTTP sortante n'est tentée. Déjà peuplée par
 `BootTest`.
 
+C'est aussi la suite qui établit P-01 à P-04 : après amorçage, le plugin n'a
+écrit **aucune** option et **aucun** transient ; puis l'option de branche de la
+dépendance est retournée, le plugin est réamorcé, et l'avis de E-05 apparaît dès
+cette requête, sans réactivation. Ce test est la seule chose qui empêche
+quelqu'un d'« optimiser » la sonde en la mémorisant (§5.2.1).
+
 **`contract`** — une accroche par test, établie **par l'exécution** et non par
 introspection.
 
@@ -929,9 +1024,10 @@ soit atteignable sans contorsion.
 | Désactivation de la dépendance, plugin actif | Avis ; aucune erreur fatale ; les accès conférés cessent |
 | Réactivation | Les réglages sont retrouvés intacts |
 | Activation sur PHP ou WordPress sous le plancher | Avis nommant la version requise et la version installée |
+| **Bascule de branche en cours de vie** | La dépendance reste active, mais son option de branche est retournée vers la branche historique : dès la requête suivante, les fonctionnalités ne s'enregistrent plus, l'avis de E-05 apparaît, et aucune erreur fatale n'est émise. Retour en arrière : tout refonctionne, sans réactivation |
 | Activation sur un site multisite | Les réglages sont propres à chaque site du réseau |
 
-Ces scénarios sont des tests d'acceptation avec capture des erreurs PHP : ce que
+Ces huit scénarios sont des tests d'acceptation avec capture des erreurs PHP : ce que
 « aucune erreur fatale » établit, c'est qu'aucun `E_ERROR`, `E_WARNING` ni
 `E_DEPRECATED` n'a été émis au passage.
 
@@ -992,7 +1088,7 @@ si son attestation a tourné.
 | Lot | Contenu | Atteste |
 |---|---|---|
 | **0 — livré** | Outillage reproductible, amorçage conditionnel, contrôle des prérequis, avis d'administration, cinq suites déclarées, scanners, intégration continue | `make test-unit` et `make test-integration` verts ; `bin/scan-secrets.sh` et `bin/scan-placeholders.sh` verts ; `make lint` et `make stan` verts |
-| **1 — preuve des accroches** | Suite `contract` peuplée : contrôle de la branche chargée (§1.1), puis une accroche du §5.1 par test, contre les deux variantes. Sonde de capacités étendue, avec le libellé d'avis de E-05. Écran d'état des capacités | La suite `contract` passe contre la variante gratuite et contre la commerciale. Les jobs `contract-free` et `contract-pro` sont déclarés |
+| **1 — preuve des accroches** | Suite `contract` peuplée : contrôle de la branche chargée (§1.1), puis une accroche du §5.1 par test, contre les deux variantes. Sonde de capacités étendue et non mémorisée (§5.2.1), avec le libellé d'avis de E-05. Écran d'état des capacités | La suite `contract` passe contre les deux variantes ; le scénario de bascule du §11.7 passe dans la suite `integration`. Les jobs `contract-free` et `contract-pro` sont déclarés. V-10, V-11 et V-13 sont relevés |
 | **2 — moteur de correspondance** | Grammaire, analyseur, normalisation des quatre formes, IPv4 et IPv6, décision sur un ensemble. Aucun branchement WordPress | Suite `matching` : chaque format de FNC-13 à FNC-18 et chaque contrainte de G-01 à G-07 ont leur test. 100 % de lignes et de branches sur le répertoire du moteur |
 | **3 — résolution de l'adresse** | `Client_Address_Resolver`, proxys de confiance, lecture de droite à gauche, source de l'adresse | Suite `matching` : les onze scénarios du §11.3 passent. SEC-07 à SEC-10 et SEC-12 couvertes |
 | **4 — réglages globaux** | Écran de réglages, les deux listes, message d'erreur, proxys, validation à l'écriture, signalement des entrées rejetées, écran de diagnostic FNC-29 | Suites `integration` et `access` : aller-retour d'enregistrement, nonce et capacité exigés, entrée rejetée signalée. SEC-01, SEC-03, SEC-11 couvertes |
@@ -1062,13 +1158,13 @@ section est ce qui empêche de présenter une hypothèse comme un acquis.
 | **V-04** | Valeurs par défaut des champs amont | Déductible — champs vides — mais non affirmé par la documentation | Sans objet pour ce plugin : FNC-27 l'impose indépendamment de l'amont |
 | **V-05** | Existence d'un hook ou d'un filtre propre à l'add-on amont | Aucun n'est mentionné dans la documentation officielle, et aucune page de référence développeur n'a été trouvée | Sans objet : le plugin expose ses propres points d'extension (§8) et ne prétend à aucune compatibilité de hooks avec l'amont |
 | **V-06** | Effet indirect du filtre `rcp_get_term_restrictions` | Le filtre existe (`core/includes/misc-functions.php:998`), mais il modifie une donnée et non une décision (§5.1.1) | Au lot 9 : instrumenter une requête qui interroge deux fois les restrictions du même terme, une fois pour la décision d'accès et une fois pour un autre usage, et constater si la seconde lecture est altérée. Si elle l'est, la couverture des taxonomies passe en fonctionnalité optionnelle, désactivée par défaut |
-| **V-07** | Le filtre `rcp_member_can_access` est-il appliqué à l'identique dans la variante **gratuite** ? | Le commentaire et le code sont dans `core/`, donc partagés (`core/includes/member-functions.php:100-101`). Le stub v4.0.4 confirme la présence de la fonction (`restrict-content.stub.php:30867`) mais un stub ne porte pas de corps | Lot 1, suite `contract` : brancher un témoin sur le filtre et provoquer le chemin déconnecté contre une installation réelle de la variante gratuite |
+| **V-07** | ~~Le filtre `rcp_member_can_access` est-il appliqué à l'identique dans la variante **gratuite** ?~~ | **Levé le 22 septembre 2026.** La source de la variante gratuite (RC 4.0.4) est lisible en local : le commentaire est à `core/includes/member-functions.php:100` et le `apply_filters` à la ligne 101, aux mêmes positions que dans la variante commerciale. Les cinq applications du chemin connecté et les trois du chemin historique sont également aux mêmes lignes (§5.1) | Le test de contrat reste, mais il n'établit plus une inconnue : il **surveille** une propriété établie. La lecture prouve que le code est là ; seule l'exécution prouve qu'il est atteint sur le chemin qui nous intéresse |
 | **V-08** | Interaction avec les caches de pages et les CDN | Rien dans la documentation amont | Au lot 5 : servir un contenu restreint à une adresse autorisée derrière un cache de pages, puis le redemander depuis une adresse non autorisée. SEC-14 pose l'attendu ; la recette établit que le marquage de non-cachabilité est bien honoré par les caches courants |
 | **V-09** | Absence de chevauchement avec les redirections personnalisées | La recherche conclut que l'add-on de redirection ne traite que la redirection après connexion et après inscription, par niveau d'adhésion | Sans objet pour ce plugin : les deux périmètres sont disjoints, et §0.2 le pose en hors-périmètre |
-| **V-10** | Quelle valeur prend `restrict_content_chosen_version` lorsque **Restrict Content Pro** est installé à la place de la variante gratuite ? Le mécanisme de routage est-il seulement atteint ? | Rien : le constat JE-003 porte sur la variante gratuite 4.0.4 | Lot 1, suite `contract` exécutée par `make test-contract-pro` : relever la valeur de l'option et la présence des fonctions du §5.1 |
-| **V-11** | Lors d'une mise à jour depuis une version 2.x historique, l'option est-elle écrite rétroactivement, ou le site reste-t-il en branche historique indéfiniment ? | Le code lu établit que la valeur enregistrée prime définitivement, mais pas ce qui se passe à la première migration | Lot 1 : provisionner un site portant `rc_settings`, constater la valeur retenue et sa persistance après mise à jour |
-| **V-12** | Existe-t-il un chemin d'interface permettant à un administrateur de basculer de la branche historique vers la branche moderne ? | Le nom de l'option suggère un écran de choix, non localisé | Lot 1 : le localiser. S'il existe, l'avis de E-05 y renvoie, ce qui change un message d'impasse en message actionnable |
-| **V-13** | Le défaut SQL de `restrict_content_check_posts_for_shortcode()` a-t-il été signalé ou corrigé après la 4.0.4 ? | Constaté en 4.0.4 (JE-003) | Le déclencheur quotidien de la suite `contract` s'exécute contre la dernière version publiée : un changement de routage s'y manifestera |
+| **V-10** | Quelle valeur prend `restrict_content_chosen_version` lorsque **Restrict Content Pro** est installé à la place de la variante gratuite ? Le mécanisme de routage est-il seulement atteint ? | **Toujours ouvert.** `RC_Requirements_Check` et `rc_process_legacy_switch()` sont dans `restrictcontent.php`, fichier principal de la variante **gratuite**. Le checkout commercial v3.5.51 n'a ni ce fichier ni ce mécanisme, ce qui suggère qu'il ne s'applique pas — mais l'absence d'un fichier dans un checkout n'établit pas l'absence du comportement sur un site où les deux plugins se sont succédé | Lot 1, `make test-contract-pro` : relever la valeur de l'option et la présence des fonctions du §5.1. Puis un scénario de succession : installer la gratuite, la remplacer par la commerciale, et constater la valeur retenue |
+| **V-11** | Lors d'une mise à jour depuis une version 2.x historique, l'option est-elle écrite rétroactivement, et le site peut-il en sortir ? | **Partiellement levé.** Le code établit que la valeur enregistrée prime à chaque amorçage (`restrictcontent.php:189-199`) et que la sortie est possible par la bascule de V-12 — donc le site n'y reste pas « indéfiniment » comme on le craignait. Reste inconnu : le comportement de la **première** mise à jour depuis une 2.x, et sur quelle valeur l'option est alors écrite | Lot 1 : provisionner un site portant `rc_settings` et une méta `rcp_user_level`, mettre à jour, relever la valeur retenue |
+| **V-12** | ~~Existe-t-il un chemin d'interface permettant de basculer d'une branche à l'autre ?~~ | **Levé le 22 septembre 2026, et la réponse va plus loin que la question.** Oui : `rc_process_legacy_switch()` (`restrictcontent.php:676`), gestionnaire AJAX enregistré sur `wp_ajax_rc_process_legacy_switch` (ligne 731), protégé par `manage_options` (ligne 680) et le nonce `rc_process_legacy_nonce` (ligne 681), bascule l'option **dans les deux sens** (lignes 695 et 706). Le choix de branche est donc réversible à tout moment, et non figé à la première activation | Conséquences portées en exigences : B-04 (§1.1), P-01 à P-04 (§5.2.1), E-05 (§5.3), et le scénario de bascule du §11.7 |
+| **V-13** | Le défaut SQL de `restrict_content_check_posts_for_shortcode()` a-t-il été signalé ou corrigé après la 4.0.4 ? | **Toujours ouvert**, mais mieux établi : le défaut est vérifié dans la source gratuite elle-même — déclaration à `restrictcontent.php:243`, quatre `CONTAINS` fautifs aux lignes 251-254 (JE-003). Ce qu'on ignore est ce qu'en font les versions ultérieures | Le déclencheur quotidien de la suite `contract` s'exécute contre la dernière version publiée : un changement de routage s'y manifestera. Aucun code de ce plugin ne dépend de ce comportement (B-03) |
 
 ---
 

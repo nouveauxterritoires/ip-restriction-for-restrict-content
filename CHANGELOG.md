@@ -22,7 +22,9 @@ restriction n'est livrée.
   l'environnement et n'enregistre les fonctionnalités que s'il les rend
   exécutables.
 - Détection de la dépendance d'adhésions **par capacité**, jamais par numéro de
-  version ni par nom de plugin.
+  version ni par nom de plugin, et réévaluée à chaque requête : la dépendance
+  peut basculer entre deux bases de code depuis son administration, ce qui
+  interdit de mémoriser le résultat de la sonde (JE-003).
 - Avis d'administration nommant précisément les prérequis absents, sans jamais
   produire d'erreur fatale.
 - Cinq suites PHPUnit déclarées — `unit`, `integration`, `contract`, `matching`,

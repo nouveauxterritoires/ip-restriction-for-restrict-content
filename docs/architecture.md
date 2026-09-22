@@ -115,7 +115,7 @@ src/
 │   └── Server_Environment.php          seul point du plugin qui lise $_SERVER
 │
 ├── Integration/                        application — branchements sur la dépendance
-│   ├── Capability_Probe.php            sonde étendue du §5.2, branche chargée (JE-003)
+│   ├── Capability_Probe.php            sonde du §5.2, jamais mémorisée (P-01…P-04)
 │   ├── Content_Access.php              rcp_member_can_access
 │   ├── Term_Access.php                 rcp_get_term_restrictions, garde-fous du §5.1.1
 │   ├── Registration_Guard.php          rcp_form_errors
@@ -195,7 +195,27 @@ Deux règles d'implémentation portent une conséquence de sécurité :
 
 ---
 
-## 6. Ce que le plugin ne fait pas, et pourquoi c'est architectural
+## 6. `Integration\Capability_Probe` — une contrainte de conception, pas une classe utilitaire
+
+Cette classe est celle dont on aura le plus envie de « corriger » le
+comportement, et il faut donc dire pourquoi elle est écrite ainsi.
+
+| Propriété | Raison |
+|---|---|
+| Elle sonde à **chaque requête**, sur `plugins_loaded` | La branche chargée par la dépendance peut changer entre deux requêtes, par une bascule d'administration (JE-003) |
+| Elle n'écrit **rien** : ni option, ni métadonnée, ni transient, ni fichier | Un résultat persisté serait faux dès la première bascule, et faux silencieusement : le plugin continuerait d'enregistrer ses filtres sur une API absente, ce qui produit une erreur fatale au premier appel |
+| Elle ne conclut **rien** au crochet d'activation | L'environnement d'activation ne préjuge pas de l'environnement des requêtes suivantes |
+| Elle mémorise en revanche son résultat **dans la requête** | La frontière est la requête, et elle est exactement à sa place : une seule conclusion par requête, transportée en mémoire |
+
+La tentation est réelle : sonder à chaque requête ressemble à du gaspillage. Le
+coût réel est une poignée d'appels à `function_exists()`, et le prix de
+l'optimisation serait un écran blanc chez quelqu'un qui a cliqué sur un bouton
+documenté. La suite `integration` interdit la régression en échouant si le
+plugin écrit une option ou un transient à l'amorçage.
+
+---
+
+## 7. Ce que le plugin ne fait pas, et pourquoi c'est architectural
 
 | Non-fait | Motif |
 |---|---|
@@ -204,12 +224,13 @@ Deux règles d'implémentation portent une conséquence de sécurité :
 | Aucun cache de décision partagé | Un cache partagé entre visiteurs est un contournement en puissance. SEC-14 |
 | Aucun appel réseau | SEC-16, vérifié par `bin/scan-secrets.sh` sur le code livré et par un test d'intégration à l'exécution |
 | Aucun filtre sur `rcp_get_ip` | Corriger un comportement de la dépendance par un filtre global changerait le comportement d'autres extensions sans qu'elles le sachent. R-06 |
-| Aucune lecture de `restrict_content_chosen_version` | Cette option dit quelle branche la dépendance a chargée, mais c'est un détail d'implémentation amont. Seule la présence effective des fonctions appelées fait foi (B-02, JE-003). L'option peut être **citée** dans un avis, jamais servir à décider |
+| Aucune lecture de `restrict_content_chosen_version` pour décider | Cette option dit quelle branche la dépendance a chargée, mais c'est un détail d'implémentation amont. Seule la présence effective des fonctions appelées fait foi (B-02, JE-003). L'option peut être **citée** dans un avis, jamais servir à décider |
+| Aucune mémorisation du résultat de la sonde | La branche chargée par la dépendance est un état mutable, retourné depuis un écran d'administration sans désactivation ni mise à jour. Une présence constatée à une requête peut être fausse à la suivante. P-01 à P-04, §5.2.1, JE-003 |
 | Aucune lecture de `$_SERVER` hors de `Http\Server_Environment` | Un seul point d'entrée pour la donnée la plus sensible du plugin rend les onze scénarios du §11.3 exhaustifs |
 
 ---
 
-## 7. Style
+## 8. Style
 
 Conventions de développement §3, sans exception :
 `declare( strict_types = 1 )` en tête de chaque fichier, garde `ABSPATH`

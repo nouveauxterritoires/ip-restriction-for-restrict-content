@@ -70,9 +70,15 @@ la suite `unit` remplace les fonctions de WordPress, les autres les chargent.
 | | WordPress 6.4 ou plus récent |
 | | Restrict Content ou Restrict Content Pro, actif **et chargeant sa base de code moderne** |
 
-La dernière condition n'est pas rhétorique : Restrict Content embarque deux
-bases de code mutuellement exclusives, et la branche historique n'expose aucune
-des fonctions dont ce plugin dépend. Le constat, avec sa preuve, est en
+La dernière condition n'est pas rhétorique. Restrict Content embarque deux bases
+de code mutuellement exclusives, et la branche historique n'expose aucune des
+fonctions dont ce plugin dépend. Pire : le choix entre les deux est **réversible
+à tout moment** depuis l'administration de la dépendance. Un administrateur peut
+donc désactiver ce plugin en cours de vie du site, sans le désinstaller — et
+recevra alors un avis d'administration qui le lui dit et nomme le retour en
+arrière.
+
+Le constat, avec ses preuves et ses numéros de ligne, est en
 `docs/journal-empirique.md` (JE-003).
 
 La variante commerciale n'est jamais versionnée dans ce dépôt : déposez son

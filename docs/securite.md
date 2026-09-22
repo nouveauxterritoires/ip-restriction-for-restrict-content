@@ -85,6 +85,7 @@ dernière valeur qu'aucun proxy de confiance n'a pu inventer.
 | Fuite d'information par le message de blocage | Un attaquant apprend qu'une liste existe et déduit son contenu par essais | SEC-17 |
 | Fuite d'adresses par les journaux | Données personnelles écrites en clair | SEC-06 |
 | Filtre tiers qui **ajoute** une correspondance | Un plugin tiers devient fournisseur d'accès au contenu payant | Le filtre `ip_restriction_for_restrict_content_match` ne peut que retirer ; son retour est intersecté, et un test le vérifie |
+| Présence de la dépendance mémorisée, puis bascule de branche | Le plugin enregistre ses filtres sur une API absente : erreur fatale au premier appel, sur un site en production | P-01 à P-04 (§5.2.1) : la sonde n'est jamais persistée. Test dans la suite `integration` |
 
 ---
 
@@ -112,3 +113,18 @@ qui pèsent le plus :
 |---|---|---|
 | **V-02** | Comment l'add-on de référence résout-il l'adresse derrière un proxy ? | Non vérifiable sans lire son code, ce que le développement en salle blanche (§0.3) interdit. Ce plugin n'essaie donc pas de reproduire un comportement inconnu : il applique R-01 à R-07 |
 | **V-08** | Les caches de pages courants honorent-ils le marquage de non-cachabilité ? | SEC-14 pose l'attendu côté plugin ; la tenue côté cache se constate en recette au lot 5, sur les caches réellement déployés |
+
+### Un point qui n'est **pas** une menace, et pourquoi le dire
+
+La dépendance permet à un administrateur de basculer d'une base de code à
+l'autre, ce qui désactive de fait ce plugin (JE-003). La bascule exige la
+capacité `manage_options` (`restrictcontent.php:680`) **et** un nonce valide
+`rc_process_legacy_nonce` (ligne 681) : elle n'est donc pas déclenchable par un
+tiers, et ce n'est pas une faille.
+
+C'est en revanche un **état mutable** dont la sécurité du plugin dépend, à un
+détail près qui compte : la bascule fait perdre des fonctionnalités, jamais n'en
+accorde. Sa conséquence va dans le sens de la fermeture (§4.5), ce qui est le bon
+sens pour un plugin qui accorde des accès. La contre-mesure — ne jamais mémoriser
+la sonde — ne protège donc pas d'un attaquant : elle protège d'une erreur fatale
+et d'un avis d'administration mensonger.

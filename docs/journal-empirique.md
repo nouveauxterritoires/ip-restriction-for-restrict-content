@@ -81,10 +81,24 @@ deux tests : la création n'a donc lieu qu'une fois, à l'amorçage.
 
 ## JE-003 — Restrict Content charge deux bases de code mutuellement exclusives, et la branche historique n'expose aucune fonction `rcp_*`
 
-**Date** : 22 septembre 2026 · **Version constatée** : Restrict Content 4.0.4,
-installée depuis WordPress.org · **Contexte** : exécution de la suite
-`integration` dans la pile Docker du projet, puis lecture de la source
-installée.
+**Date** : 22 septembre 2026 · **Version constatée** : Restrict Content 4.0.4 ·
+**Contexte** : exécution de la suite `integration` dans la pile Docker du
+projet, puis lecture de la source.
+
+**Source de la preuve.** La variante gratuite est lisible en local sous
+`~/WORK/ressources-restrict-content/restrict-content/` (v4.0.4, `core/` 6,8 Mo,
+`legacy/` 688 Ko). Tous les numéros de ligne de cette entrée y sont vérifiés
+directement. Lire cette source ne contrevient pas au développement en salle
+blanche : le §0.3 du cahier des charges interdit de lire le code de l'**add-on
+commercial** IP Restriction, pas celui de la dépendance elle-même — dont la
+lecture est au contraire la méthode prescrite par les conventions §11.
+
+**Fait annexe, mais parlant.** L'en-tête de `restrictcontent.php` (lignes 3 et 6)
+annonce `Plugin Name: Kadence Memberships`, version 4.0.4 — et son écran de
+réglages s'intitule « Kadence Memberships Pro Settings »
+(`core/includes/admin/admin-pages.php:28`). Le plugin dont on dépend ne porte
+donc même pas le nom sous lequel on le cherche. Une détection par nom de plugin
+aurait échoué avant même d'atteindre la question des branches.
 
 **C'est le constat le plus lourd de conséquences du projet.** Il ne porte pas
 sur un détail d'outillage : il détermine si le plugin peut fonctionner du tout
@@ -111,13 +125,14 @@ l'installation réelle :
 | `rcp_is_active` | 0 | 1 |
 | `rcp_get_customer_by_user_id` | 0 | 1 |
 
-Le choix est fait **une seule fois**, à la première activation, par
-`RC_Requirements_Check::load()` (`restrictcontent.php`, lignes 185-215), puis
-**persisté** dans l'option `restrict_content_chosen_version` :
+Le choix initial est fait par `RC_Requirements_Check::load()`
+(`restrictcontent.php`, lignes 186-215) et **persisté** dans l'option
+`restrict_content_chosen_version`. La valeur enregistrée prime ensuite à chaque
+amorçage (lignes 189-199) :
 
 ```php
 if ( get_option('restrict_content_chosen_version') ) {
-    // la valeur enregistrée prime, définitivement
+    // la valeur enregistrée prime
 } else {
     if ( get_option('rc_settings')
         || $this->restrict_content_check_posts_for_meta()
@@ -130,6 +145,61 @@ if ( get_option('restrict_content_chosen_version') ) {
     }
 }
 ```
+
+### Le choix n'est pas figé : il est réversible en cours de vie du site
+
+C'est la correction la plus importante à apporter à une première lecture de
+`load()`. La valeur de l'option n'est pas une propriété de l'installation, fixée
+une fois pour toutes à la première activation : c'est un **état mutable**, que
+l'administrateur peut retourner à tout moment depuis l'administration.
+
+`restrictcontent.php` expose un gestionnaire AJAX, `rc_process_legacy_switch()`
+(ligne 676), enregistré sur `wp_ajax_rc_process_legacy_switch` (ligne 731), qui
+bascule l'option d'une branche à l'autre :
+
+```php
+if ( get_option('restrict_content_chosen_version') == 'legacy' ) {
+    $redirectUrl = admin_url('admin.php?page=restrict-content-settings');
+    update_option('restrict_content_chosen_version', '3.0');   // ligne 695
+    // …
+} else {
+    $redirectUrl = admin_url('admin.php?page=rcp-members');
+    update_option('restrict_content_chosen_version', 'legacy'); // ligne 706
+    // …
+}
+```
+
+| Élément | Ligne |
+|---|---|
+| `function rc_process_legacy_switch()` | 676 |
+| Capacité exigée : `current_user_can( 'manage_options' )` | 680 |
+| Nonce exigé : `rc_process_legacy_nonce` | 681 |
+| Bascule vers la branche moderne | 695 |
+| Bascule vers la branche historique | 706 |
+| Troisième écriture, lorsque l'option est absente | 718 |
+| Enregistrement du gestionnaire AJAX | 731 |
+| Émission du nonce dans le formulaire d'administration | 743 |
+| Lecture de l'option pour décider d'un affichage | 768 |
+
+**La bascule est protégée par une capacité et un nonce : ce n'est pas une
+faille.** C'est une fonctionnalité, et c'est précisément pour cela qu'il faut en
+tenir compte : elle sera utilisée.
+
+**Ce que cela impose.** Un plugin peut fonctionner correctement pendant des mois,
+puis cesser de fonctionner parce qu'un administrateur a basculé sur la branche
+historique depuis un écran. Trois conséquences, portées en exigences au cahier
+des charges §5.2 sous les références P-01 à P-04 :
+
+| Conséquence | Exigence |
+|---|---|
+| Le résultat de la sonde de capacités ne doit **jamais** être mémorisé au-delà de la requête — ni en option, ni en métadonnée, ni en transient, ni décidé à l'activation | P-01, P-02 |
+| Le contrôle des prérequis à chaque requête, sur `plugins_loaded`, cesse d'être un détail d'implémentation pour devenir une **propriété à préserver**, vérifiée par un test | P-03 |
+| L'avis d'administration prend tout son sens : celui qui vient de basculer est exactement celui qui peut revenir en arrière, et il a besoin qu'on lui dise que sa bascule a désactivé ce plugin | P-04, E-05 |
+
+Un plugin qui écrirait « la dépendance est présente » à l'activation se
+tromperait dès la première bascule, et se tromperait **silencieusement** : il
+continuerait d'enregistrer ses filtres sur une API absente, ce qui produit une
+erreur fatale au premier appel — exactement ce que le §5.3 interdit.
 
 ### Le défaut amont qui fausse le routage
 
@@ -167,19 +237,28 @@ moderne.
 
 | Réf. | Conséquence |
 |---|---|
-| 1 | Sur un site où `restrict_content_chosen_version` vaut `legacy`, **ce plugin ne peut pas fonctionner** : l'API dont il dépend n'existe pas dans le processus. Ce n'est pas un cas théorique — c'est le sort de toute installation antérieure portant l'option `rc_settings` ou une méta `rcp_user_level` |
+| 1 | Sur un site où `restrict_content_chosen_version` vaut `legacy`, **ce plugin ne peut pas fonctionner** : l'API dont il dépend n'existe pas dans le processus. Ce n'est pas un cas théorique — c'est le sort de toute installation antérieure portant l'option `rc_settings` ou une méta `rcp_user_level`, **et de toute installation dont l'administrateur a basculé** |
 | 2 | L'avis de prérequis doit **nommer cette cause précise**. Dire « Restrict Content absent » à un administrateur dont le plugin est visiblement actif est incompréhensible. La formulation passe par la capacité : « Restrict Content est actif mais charge sa base de code historique, qui n'expose pas l'API nécessaire. » Cahier des charges §5.3 |
-| 3 | **La détection par capacité n'est pas une précaution de style, c'est la seule qui marche.** Ni le nom du plugin, ni son numéro de version, ni la constante `RC_PLUGIN_VERSION` ne disent quelle branche est en mémoire. Seule la présence effective des fonctions appelées le dit. C'est la validation empirique de la règle posée par les conventions de développement §2 |
+| 3 | **La détection par capacité n'est pas une précaution de style, c'est la seule qui marche.** Ni le nom du plugin — qui est « Kadence Memberships » —, ni son numéro de version, ni la constante `RC_PLUGIN_VERSION` ne disent quelle branche est en mémoire. Seule la présence effective des fonctions appelées le dit, **et seulement pour la requête en cours**. C'est la validation empirique de la règle posée par les conventions de développement §2 |
 | 4 | Le défaut SQL peut être corrigé en amont à tout moment, ce qui **changerait le routage** des sites installés après le correctif. Aucun code de ce plugin ne doit dépendre de ce comportement |
 | 5 | La suite `contract` vérifie que la branche chargée est bien la moderne, et échoue **de façon diagnosticable** — plutôt que de laisser une suite métier échouer plus loin sur une fonction absente |
+| 6 | Le résultat de la sonde n'est jamais mémorisé au-delà de la requête (P-01 à P-04), parce que la branche chargée peut changer entre deux requêtes |
 
 Ce constat est la raison pour laquelle `Plugin::from_environment()`
 (`src/Plugin.php`) sonde `rcp_get_membership_levels()` et non un nom de plugin,
 depuis le lot 0.
 
+### Le défaut SQL, vérifié dans la source libre
+
+`restrict_content_check_posts_for_shortcode()` est déclarée à la ligne 243 de
+`restrictcontent.php`, et les quatre `CONTAINS` fautifs sont aux lignes 251 à
+254. Le constat du §« défaut amont » est donc établi sur la variante gratuite
+elle-même, et non par analogie.
+
 ### Ce qui reste à vérifier
 
-Porté au cahier des charges §15.2 : V-10 à V-13.
+Porté au cahier des charges §15.2 : V-10, V-11 et V-13. Les points V-07 et V-12
+sont **levés** par la disponibilité locale de la source.
 
 ---
 

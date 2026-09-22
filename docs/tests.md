@@ -68,7 +68,8 @@ Déjà peuplée : `RequirementsNoticeTest`, `MakefileTest`,
 | Absence d'erreur | Un gestionnaire d'erreurs capture `E_ERROR`, `E_WARNING`, `E_NOTICE` et `E_DEPRECATED` pendant l'activation et le rendu ; l'émission d'une seule fait échouer le test |
 | Écrans | Les écrans du §7 se rendent, et les réglages survivent à un aller-retour d'enregistrement |
 | Absence de réseau | `pre_http_request` est bouchonné et échoue à la moindre tentative (SEC-16) |
-| Scénarios d'activation | Les sept scénarios du cahier des charges §11.7 |
+| Non-mémorisation de la sonde | P-01 à P-04 : après amorçage, aucune option ni aucun transient n'a été écrit par le plugin ; puis l'option de branche de la dépendance est retournée, le plugin réamorcé, et l'avis de E-05 apparaît dès cette requête, sans réactivation |
+| Scénarios d'activation | Les huit scénarios du cahier des charges §11.7, dont la bascule de branche en cours de vie |
 
 Déjà peuplée : `BootTest`.
 
@@ -90,6 +91,13 @@ les suites métier tombent plus loin, sur une fonction introuvable. Le constat
 qui l'impose est JE-003, et il vaut aussi bien en environnement de test qu'en
 production.
 
+**Ce que ces tests ne sont plus.** Depuis que la source de la variante gratuite
+est lisible en local, la présence du code des accroches est établie par lecture
+directe, et non déduite d'un stub : le point ouvert V-07 est levé. Ces tests
+changent donc de nature — ils ne comblent plus une inconnue, ils **surveillent**
+une propriété établie. La distinction compte pour leur rédaction : le message
+d'échec doit dire « l'amont a changé », et non « nous ne savions pas ».
+
 | Accroche à établir | Chemin à provoquer | Source de l'attendu |
 |---|---|---|
 | `rcp_member_can_access`, visiteur déconnecté | Demander un contenu restreint sans être connecté | `core/includes/member-functions.php:101` |
@@ -105,6 +113,7 @@ production.
 | `rcp_metabox_fields_before` / `_after`, `rcp_save_post_meta` | Rendre et enregistrer la boîte de restriction | `core/includes/admin/metabox.php:77, 81, 226` |
 | Branche chargée | **Premier test de la suite.** Constater la présence des fonctions `rcp_*` du §5.1 et échouer avec un message nommant la branche historique si elles manquent | JE-003 |
 | Capacité `rcp_manage_settings` | Vérifier qu'elle est accordée à l'administrateur | `core/includes/class-rcp-capabilities.php:53` |
+| Bascule de branche | Retourner `restrict_content_chosen_version`, réamorcer, constater que la sonde conclut à l'absence — et qu'elle n'avait rien mémorisé | JE-003, P-01 à P-04 |
 
 Le quatrième test de ce tableau est d'un genre particulier : il établit une
 **absence**. C'est ce qui rend la contrainte du cahier des charges §5.1.1
@@ -232,5 +241,6 @@ défaut ; `make coverage` mesure chaque suite et fusionne.
 | Asserter qu'une chaîne de code source contient un motif, à la place d'exécuter | `ScannersTest` exécute les scanners précisément pour cette raison : un scanner inerte passerait toute lecture |
 | Assouplir un test qui échoue avant d'avoir cherché ce qu'il révèle | Un test qui échoue est une information |
 | Dépendre de l'ordre des tests, ou d'un état laissé par un test précédent | Les suites sont rejouées isolément en diagnostic |
+| Mémoriser l'état de la dépendance entre deux tests pour aller plus vite | Ce serait reproduire dans les tests exactement le défaut que P-01 interdit dans le code |
 | Utiliser une adresse réellement attribuée | §3 |
 | Bouchonner le moteur de correspondance dans la suite `access` | La suite `access` doit établir le comportement observable réel, moteur compris |
