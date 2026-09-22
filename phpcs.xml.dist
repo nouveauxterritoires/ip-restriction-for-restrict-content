@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<ruleset name="ip-restriction-for-restrict-content">
+    <description>Standards WordPress appliqués au plugin.</description>
+
+    <file>src</file>
+    <file>templates</file>
+    <file>tests</file>
+    <file>ip-restriction-for-restrict-content.php</file>
+    <file>uninstall.php</file>
+
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/tests/coverage/*</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+    <arg name="parallel" value="8"/>
+
+    <rule ref="WordPress"/>
+    <rule ref="WordPress-Extra"/>
+    <rule ref="WordPress-Docs"/>
+
+    <!-- Compatibilité PHP déclarée dans l'en-tête du plugin (ADR-0002). -->
+    <config name="testVersion" value="8.1-"/>
+    <rule ref="PHPCompatibilityWP"/>
+
+    <!--
+        Deux formes du préfixe, décision O-01 (ADR-0001) : forme longue dérivée
+        du slug pour les symboles globaux PHP et les hooks, forme courte pour
+        les constantes, les tables, les métas et les chaînes destinées au
+        balisage.
+    -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="ip_restriction_for_restrict_content"/>
+                <element value="Ip_Restriction_For_Restrict_Content"/>
+                <element value="RCIPR_"/>
+                <element value="rcipr_"/>
+            </property>
+        </properties>
+    </rule>
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="ip-restriction-for-restrict-content"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!--
+        Les fichiers de tests s'exécutent en ligne de commande, jamais servis
+        par le serveur web ni chargés par WordPress. Les sniffs qui visent le
+        code d'exécution WordPress n'y ont pas de sens : WP_Filesystem n'existe
+        pas dans la suite unit, et $_SERVER['argv'] n'est pas une entrée
+        utilisateur. Les exclure nommément vaut mieux que de sortir tests/ du
+        périmètre : tout le reste du standard continue de s'y appliquer.
+    -->
+    <rule ref="WordPress.WP.AlternativeFunctions">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.Security.ValidatedSanitizedInput">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <!-- Les scanners doivent être exécutés pour prouver quoi que ce soit :
+         un test qui se contenterait de lire leur code source les laisserait
+         passer inertes. -->
+    <rule ref="WordPress.PHP.DiscouragedPHPFunctions.system_calls_exec">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <!-- Un test de contrat qui vérifie l'existence d'une table n'a pas d'autre
+         moyen que d'interroger la base : la mise en cache y serait un contresens. -->
+    <rule ref="WordPress.DB.DirectDatabaseQuery">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!-- Les tests déclenchent et observent les hooks de WordPress et de la
+         dépendance : ce sont leurs noms, pas les nôtres. De même, l'amorçage
+         des tests définit ABSPATH, constante de WordPress. -->
+    <rule ref="WordPress.NamingConventions.ValidHookName">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <!-- Le test d'acceptation « aucune erreur fatale » doit capturer les
+         erreurs PHP : il lui faut un gestionnaire d'erreurs. -->
+    <rule ref="WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!-- Les tests interrogent délibérément les tables du plugin, y compris
+         leur structure : les noms de tables y sont des constantes du code,
+         jamais des entrées. -->
+    <rule ref="WordPress.DB.PreparedSQL">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!-- PSR-4 : les noms de fichiers ne suivent pas la convention WordPress. -->
+    <rule ref="WordPress.Files.FileName">
+        <exclude-pattern>src/*</exclude-pattern>
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+</ruleset>

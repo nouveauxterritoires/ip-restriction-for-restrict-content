@@ -1,0 +1,121 @@
+services:
+
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${RCIPR_DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${RCIPR_DB_NAME:-wordpress}
+      MYSQL_USER: ${RCIPR_DB_USER:-wordpress}
+      MYSQL_PASSWORD: ${RCIPR_DB_PASSWORD:-wordpress}
+    ports:
+      - "${RCIPR_DB_PORT:-3308}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${RCIPR_DB_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Base dédiée aux suites de tests : en mémoire, distincte de la base
+  # applicative. Une suite qui tronque des tables ne doit jamais pouvoir
+  # atteindre le site de développement (cahier des charges §12.1).
+  db_test:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wordpress_test
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wordpress:
+    # Les services wordpress et cli partagent une seule image : même tag et
+    # même contexte de construction, pour qu'un `docker compose build` ne
+    # laisse jamais l'un des deux sur une version périmée.
+    image: ip-restriction-for-restrict-content/wordpress:php${PHP_VERSION:-8.1}
+    build:
+      context: ./docker/wordpress
+      args:
+        PHP_VERSION: ${PHP_VERSION:-8.1}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${RCIPR_HTTP_PORT:-8082}:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: ${RCIPR_DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${RCIPR_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${RCIPR_DB_PASSWORD:-wordpress}
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+        define( 'SCRIPT_DEBUG', true );
+        define( 'DISABLE_WP_CRON', true );
+        define( 'WP_ENVIRONMENT_TYPE', 'development' );
+    volumes:
+      - wp-data:/var/www/html
+      - ./:/var/www/html/wp-content/plugins/ip-restriction-for-restrict-content
+      - ./vendor-plugins:/vendor-plugins:ro
+
+  cli:
+    image: ip-restriction-for-restrict-content/wordpress:php${PHP_VERSION:-8.1}
+    build:
+      context: ./docker/wordpress
+      args:
+        PHP_VERSION: ${PHP_VERSION:-8.1}
+    depends_on:
+      db:
+        condition: service_healthy
+      db_test:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: ${RCIPR_DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${RCIPR_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${RCIPR_DB_PASSWORD:-wordpress}
+      WP_TESTS_DB_HOST: db_test
+      WP_TESTS_DB_NAME: wordpress_test
+      WP_TESTS_DB_USER: root
+      WP_TESTS_DB_PASSWORD: root
+      # Volume persistant : chaque `docker compose run` crée un conteneur neuf,
+      # /tmp ne survivrait pas d'une commande à l'autre.
+      WP_TESTS_DIR: /wp-tests/lib
+      WP_CORE_DIR: /wp-tests/core
+      RCP_VARIANT: ${RCP_VARIANT:-free}
+      RCP_VERSION: ${RCP_VERSION:-latest}
+      RCP_PRO_SOURCE: ${RCP_PRO_SOURCE:-}
+      VENDOR_PLUGINS_DIR: /vendor-plugins
+      WP_VERSION: ${WP_VERSION:-latest}
+      # URL publique, telle qu'atteinte depuis le navigateur de l'hôte.
+      WP_URL: http://localhost:${RCIPR_HTTP_PORT:-8082}
+    volumes:
+      - wp-data:/var/www/html
+      - test-data:/wp-tests
+      - ./:/var/www/html/wp-content/plugins/ip-restriction-for-restrict-content
+      - ./vendor-plugins:/vendor-plugins:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["sleep infinity"]
+
+  # Capture des courriels : aucun message du plugin ne doit partir vers un
+  # serveur réel depuis un poste de développement.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${RCIPR_MAIL_PORT:-8027}:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+  db-data:
+  wp-data:
+  test-data:

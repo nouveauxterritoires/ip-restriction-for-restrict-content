@@ -1,0 +1,413 @@
+# Journal empirique
+
+Chaque comportement surprenant d'une dépendance ou de l'outillage est consigné
+ici **avec la preuve qui l'établit** : commande exécutée, sortie obtenue,
+fichier et ligne, date, version. C'est ce qui évite qu'un successeur
+« simplifie » une précaution qu'il ne comprend pas.
+
+Chaque entrée est référencée depuis le code qui la contourne.
+
+Sauf mention contraire, les chemins `core/…` et `pro/…` se lisent depuis
+`~/WORK/rcp-stripe-sepa/ressources/restrict-content-pro/` (Restrict Content Pro
+v3.5.51).
+
+---
+
+## JE-001 — Un processus PHPUnit peut sortir en succès sans avoir exécuté les tests
+
+**Date** : 22 septembre 2026 · **Contexte** : mise en place de l'intégration
+continue.
+
+Deux situations distinctes produisent le même faux signal : le code de sortie
+vaut 0, et rien n'indique que quoi que ce soit ait été testé.
+
+**Première situation — le processus meurt en silence.** Chaque fichier livré
+commence par `defined( 'ABSPATH' ) || exit;` (SEC-15). Dans la suite `unit`,
+WordPress n'est pas chargé : sans définition préalable d'`ABSPATH`, la première
+inclusion d'une classe du plugin appelle `exit`. Le processus s'arrête, PHPUnit
+n'écrit aucun récapitulatif, et le code de sortie est 0.
+
+**Seconde situation — la suite est vide.** Une suite déclarée mais dépourvue de
+tests sort en succès avec « No tests executed! ». Le signal est donc faux tant
+que la suite n'est pas peuplée.
+
+**Conséquences, toutes en place au lot 0.**
+
+1. `tests/bootstrap.php` définit `ABSPATH` avant tout chargement dans la suite
+   `unit`, vers un chemin qui ne désigne rien d'exécutable — la suite `unit` ne
+   charge jamais WordPress, elle le remplace par Brain Monkey
+   (`tests/bootstrap.php:89-102`).
+2. `bin/run-suite.sh` ne se contente pas du code de sortie : il exige que la
+   sortie porte un récapitulatif PHPUnit (`^OK`, `^OK, but`, `^Tests:` ou
+   `^No tests executed!`) et échoue sinon, avec un message qui nomme la cause
+   probable (`bin/run-suite.sh:27-43`). `bin/coverage.sh:39` applique le même
+   garde.
+3. Les suites `contract`, `matching` et `access` ne sont pas déclarées comme
+   jobs d'intégration continue tant qu'elles sont vides
+   (`.github/workflows/ci.yml:195`).
+
+Les deux gardes ne se recouvrent pas : le premier porte sur la fin du
+processus, le second sur la présence de tests. Il ne faut pas les confondre —
+« No tests executed! » est un récapitulatif comme un autre pour le premier.
+
+---
+
+## JE-002 — La bibliothèque de tests de WordPress ne crée pas les tables de la dépendance
+
+**Date** : 22 septembre 2026 · **Contexte** : amorçage des suites qui chargent
+un WordPress réel.
+
+La dépendance crée ses tables à l'activation du plugin et sur `admin_init`. La
+bibliothèque de tests de WordPress ne fait ni l'un ni l'autre. Sans
+intervention, toute création de niveau d'adhésion échoue avec
+« level_not_added », et la table de métadonnées de niveau reste absente — ce qui
+condamne d'avance les suites `contract`, `matching` et `access`, qui ont toutes
+besoin de niveaux réels.
+
+L'échec se manifeste loin de sa cause : le message parle d'un niveau qui n'a pas
+pu être ajouté, jamais d'une table manquante.
+
+**Conséquence** : `tests/bootstrap.php:169-213` sollicite directement les
+interfaces de table de chaque composant enregistré, plutôt que de déclencher
+`do_action( 'admin_init' )` qui entraînerait tout le reste de l'initialisation
+de l'administration. Le registre des composants est **parcouru** plutôt qu'une
+liste écrite à la main : une liste oubliée laisserait une table absente, et
+l'erreur reparaîtrait sous son déguisement habituel.
+
+Le DDL n'étant pas transactionnel, les tables survivent au rollback opéré entre
+deux tests : la création n'a donc lieu qu'une fois, à l'amorçage.
+
+---
+
+## JE-003 — Restrict Content charge deux bases de code mutuellement exclusives, et la branche historique n'expose aucune fonction `rcp_*`
+
+**Date** : 22 septembre 2026 · **Version constatée** : Restrict Content 4.0.4,
+installée depuis WordPress.org · **Contexte** : exécution de la suite
+`integration` dans la pile Docker du projet, puis lecture de la source
+installée.
+
+**C'est le constat le plus lourd de conséquences du projet.** Il ne porte pas
+sur un détail d'outillage : il détermine si le plugin peut fonctionner du tout
+sur une installation donnée.
+
+### Le fait
+
+Le plugin `restrict-content` embarque deux bases de code distinctes et n'en
+charge **qu'une**.
+
+| Branche | Taille | API moderne `rcp_*` |
+|---|---|---|
+| `legacy/` | 716 Ko | **aucune** des fonctions vérifiées n'y est définie |
+| `core/` | 7,3 Mo | toutes y sont définies |
+
+Fonctions sondées, par `grep -rl "function <nom>"` dans chaque branche de
+l'installation réelle :
+
+| Fonction | `legacy/` | `core/` |
+|---|---|---|
+| `rcp_get_membership_levels` | 0 | 1 |
+| `rcp_get_discounts` | 0 | 2 |
+| `rcp_validate_discount` | 0 | 4 |
+| `rcp_is_active` | 0 | 1 |
+| `rcp_get_customer_by_user_id` | 0 | 1 |
+
+Le choix est fait **une seule fois**, à la première activation, par
+`RC_Requirements_Check::load()` (`restrictcontent.php`, lignes 185-215), puis
+**persisté** dans l'option `restrict_content_chosen_version` :
+
+```php
+if ( get_option('restrict_content_chosen_version') ) {
+    // la valeur enregistrée prime, définitivement
+} else {
+    if ( get_option('rc_settings')
+        || $this->restrict_content_check_posts_for_meta()
+        || $this->restrict_content_check_posts_for_shortcode() ) {
+        update_option('restrict_content_chosen_version', 'legacy');
+        $this->load_legacy_restrict_content();
+    } else {
+        update_option('restrict_content_chosen_version', '3.0');
+        $this->load_restrict_content_3();
+    }
+}
+```
+
+### Le défaut amont qui fausse le routage
+
+`restrict_content_check_posts_for_shortcode()` (`restrictcontent.php`, lignes
+243-263) émet une requête SQL invalide :
+
+```sql
+SELECT * FROM wp_posts WHERE
+              post_content CONTAINS '[restrict]' OR
+              post_content CONTAINS '[not_logged_in]' OR
+              post_content CONTAINS '[login_form]' OR
+              post_content CONTAINS '[register_form]' OR
+              LIMIT 1
+```
+
+Deux erreurs : `CONTAINS` n'est pas un opérateur MySQL — la comparaison de
+sous-chaîne s'écrit `LIKE '%…%'` — et un `OR` orphelin précède le `LIMIT`. La
+requête échoue toujours, `$wpdb->get_results()` renvoie un tableau vide, et la
+méthode renvoie invariablement `false`.
+
+Trace observée à l'amorçage de la suite `integration`, avec `WP_DEBUG` actif :
+
+```
+WordPress database error You have an error in your SQL syntax […] near
+'CONTAINS '[restrict]' OR post_content CONTAINS '[not_l' at line 2
+[…] RC_Requirements_Check->__construct, RC_Requirements_Check->load,
+RC_Requirements_Check->restrict_content_check_posts_for_shortcode
+```
+
+Conséquence : un site dont le seul signe d'ancienneté est un code court dans le
+contenu d'un article n'est pas détecté comme ancien, et bascule sur la branche
+moderne.
+
+### Ce que cela impose à ce plugin
+
+| Réf. | Conséquence |
+|---|---|
+| 1 | Sur un site où `restrict_content_chosen_version` vaut `legacy`, **ce plugin ne peut pas fonctionner** : l'API dont il dépend n'existe pas dans le processus. Ce n'est pas un cas théorique — c'est le sort de toute installation antérieure portant l'option `rc_settings` ou une méta `rcp_user_level` |
+| 2 | L'avis de prérequis doit **nommer cette cause précise**. Dire « Restrict Content absent » à un administrateur dont le plugin est visiblement actif est incompréhensible. La formulation passe par la capacité : « Restrict Content est actif mais charge sa base de code historique, qui n'expose pas l'API nécessaire. » Cahier des charges §5.3 |
+| 3 | **La détection par capacité n'est pas une précaution de style, c'est la seule qui marche.** Ni le nom du plugin, ni son numéro de version, ni la constante `RC_PLUGIN_VERSION` ne disent quelle branche est en mémoire. Seule la présence effective des fonctions appelées le dit. C'est la validation empirique de la règle posée par les conventions de développement §2 |
+| 4 | Le défaut SQL peut être corrigé en amont à tout moment, ce qui **changerait le routage** des sites installés après le correctif. Aucun code de ce plugin ne doit dépendre de ce comportement |
+| 5 | La suite `contract` vérifie que la branche chargée est bien la moderne, et échoue **de façon diagnosticable** — plutôt que de laisser une suite métier échouer plus loin sur une fonction absente |
+
+Ce constat est la raison pour laquelle `Plugin::from_environment()`
+(`src/Plugin.php`) sonde `rcp_get_membership_levels()` et non un nom de plugin,
+depuis le lot 0.
+
+### Ce qui reste à vérifier
+
+Porté au cahier des charges §15.2 : V-10 à V-13.
+
+---
+
+## JE-004 — `wp i18n make-pot` produit un diff à chaque exécution
+
+**Date** : 22 septembre 2026 · **Version** : WP-CLI 2.12.0.
+
+L'en-tête du `.pot` porte `POT-Creation-Date`, réécrit à chaque génération :
+
+```
+$ head -15 languages/ip-restriction-for-restrict-content.pot | grep POT-Creation
+"POT-Creation-Date: 2026-09-22T10:12:52+00:00\n"
+```
+
+Un job qui vérifierait la fraîcheur du `.pot` par `git diff --quiet` échouerait
+donc sur **toute** exécution, y compris quand aucune chaîne traduisible n'a
+changé — ce qui apprend vite à ignorer le job.
+
+**Conséquence** : le job `i18n` régénère dans un fichier temporaire et compare
+en retirant la ligne datée (`.github/workflows/ci.yml:217-222`). Seul le contenu
+traduisible est comparé.
+
+---
+
+## JE-005 — `rcp_get_ip()` fait confiance à des en-têtes que le visiteur contrôle
+
+**Date** : 22 septembre 2026 · **Version** : Restrict Content Pro 3.5.51,
+fonction présente à l'identique dans la variante gratuite
+(`restrict-content.stub.php:28530`).
+
+`rcp_get_ip()` (`core/includes/misc-functions.php:731`) retient, dans cet
+ordre :
+
+| Ordre | Source | Ligne | Falsifiable par le client |
+|---|---|---|---|
+| 1 | `$_SERVER['HTTP_CLIENT_IP']` | 734 | **oui** |
+| 2 | Premier élément de `$_SERVER['HTTP_X_FORWARDED_FOR']` | 737-742 | **oui** |
+| 3 | `$_SERVER['REMOTE_ADDR']` | 743 | non |
+
+Sur un site sans proxy, un visiteur qui envoie `Client-Ip: 192.0.2.10` fait dire
+à `rcp_get_ip()` qu'il vient de `192.0.2.10`. Seul `REMOTE_ADDR` est renseigné
+par le serveur web à partir de la connexion TCP.
+
+Le choix de l'ordre 2 est aggravant en soi : `X-Forwarded-For` s'accroît **par
+la gauche** à chaque saut. Retenir le premier élément, c'est retenir exactement
+la valeur qu'un client malveillant aurait injectée.
+
+**Conséquence** : ce plugin n'utilise pas `rcp_get_ip()` comme source de
+décision, et ne filtre pas `rcp_get_ip` pour le corriger — un autre code peut
+dépendre de son comportement actuel, et le corriger globalement le changerait
+sans que ce code le sache. Il résout l'adresse pour lui-même, selon R-01 à R-07
+du cahier des charges §4.7, et cette résolution porte les exigences SEC-07 à
+SEC-09.
+
+La fonction expose un filtre `rcp_get_ip` en sortie
+(`core/includes/misc-functions.php:755`). Le tenir pour un point de correction
+serait une erreur d'appréciation : un filtre appliqué après coup ne répare pas
+un ordre de priorité fautif pour les autres consommateurs, il les fait
+seulement dépendre de nous.
+
+---
+
+## JE-006 — Le noyau expose `rcp_member_can_access` délibérément pour cet usage
+
+**Date** : 22 septembre 2026 · **Version** : 3.5.51.
+
+`rcp_user_can_access()` (`core/includes/member-functions.php:70`) traite
+séparément le visiteur sans enregistrement client et le visiteur qui en a un.
+Sur le premier chemin, juste avant d'appliquer le filtre, le noyau porte ce
+commentaire (`core/includes/member-functions.php:100`) :
+
+> « We need to apply the filter here so that it can be used on logged-out
+> users, like in IP Restriction. »
+
+C'est la preuve la plus forte disponible que le point d'accroche de FNC-05 n'est
+pas un détournement : le noyau **libre** applique ce filtre sur le chemin
+déconnecté pour cet usage précis.
+
+Le filtre est appliqué à cinq endroits supplémentaires sur le chemin connecté
+(`core/includes/customers/class-rcp-customer.php:772, 777, 786, 791, 806`) et à
+trois sur le chemin historique (`core/includes/class-rcp-member.php:970, 975,
+987`). Le noyau le consomme lui-même pour une intégration tierce
+(`core/includes/integrations/class-rcp-wp-approve-user.php:38`), ce qui le rend
+difficile à retirer sans casser son propre code.
+
+**Conséquence** : c'est l'accroche retenue au cahier des charges §5.1. Elle
+reste établie **par l'exécution** dans la suite `contract`, et contre la
+variante gratuite en particulier — le commentaire est dans `core/`, donc
+partagé, mais un stub ne porte pas de corps (V-07).
+
+---
+
+## JE-007 — Un `die()` pendant un test arrête le processus en silence, avec le code 0
+
+**Date** : 22 septembre 2026 · **Contexte** : conception de `bin/run-suite.sh`.
+
+La dépendance émet des `die()`, notamment depuis `wp_send_json_error()`, que le
+traitement du formulaire d'inscription appelle
+(`core/includes/registration-functions.php:34, 51, 155`). Atteint pendant un
+test, ce `die()` arrête le processus PHP **en silence et avec le code de sortie
+0**. PHPUnit n'écrit alors aucun récapitulatif, et l'intégration continue lit un
+succès là où la moitié des tests n'a pas été exécutée.
+
+Le point mérite d'être souligné parce qu'il frappera précisément la suite
+`access`, dont tous les tests de blocage d'inscription traversent ce chemin.
+
+**Conséquence** : `bin/run-suite.sh` exige le récapitulatif final plutôt que de
+se fier au code de sortie, et nomme la cause probable dans son message d'échec
+(`bin/run-suite.sh:34-42`). Les tests d'inscription devront en outre intercepter
+la terminaison plutôt que de la subir — c'est un point de conception de la
+suite `access`, pas une fatalité.
+
+---
+
+## JE-008 — `rcp_user_can_access_term()` n'applique aucun filtre
+
+**Date** : 22 septembre 2026 · **Version** : 3.5.51.
+
+Contrairement à `rcp_user_can_access()`, la fonction qui décide l'accès à un
+**terme** de taxonomie ne passe par aucun point d'accroche
+(`core/includes/member-functions.php:134-175`). Elle renvoie sa décision
+directement, et renvoie même `false` sans filtre lorsqu'aucun enregistrement
+client ne correspond à l'utilisateur (lignes 148-153).
+
+Il est donc **impossible** d'accorder l'accès à un contenu restreint par
+catégorie ou par étiquette en filtrant la décision.
+
+La seule accroche disponible est en amont : `rcp_get_term_restrictions`
+(`core/includes/misc-functions.php:998`) filtre les **restrictions** du terme,
+pas la décision. Renvoyer un tableau vide neutralise la restriction pour la
+requête en cours, ce qui est un instrument plus grossier : il modifie une donnée
+que d'autres codes peuvent lire pendant la même requête.
+
+**Conséquence** : cahier des charges §5.1.1. Les restrictions de taxonomie sont
+traitées au lot 9, par `rcp_get_term_restrictions` et sous trois garde-fous, et
+l'absence d'effet indirect est portée en V-06. La suite `contract` établit cette
+absence de filtre par un test qui la constate : le jour où la dépendance
+ajouterait enfin un point d'accroche sur la décision, ce test échouera, et ce
+sera une bonne nouvelle à traiter.
+
+---
+
+## JE-009 — Le formulaire d'inscription répond en JSON, pas par un rechargement
+
+**Date** : 22 septembre 2026 · **Version** : 3.5.51.
+
+La documentation de l'add-on de référence ne précise pas si le message d'erreur
+de blocage apparaît par rechargement de la page ou en place. La lecture du code
+tranche : `rcp_process_registration()` collecte les erreurs par `rcp_errors()`,
+puis les renvoie par `wp_send_json_error()` avec
+`rcp_get_error_messages_html( 'register' )`
+(`core/includes/registration-functions.php:151-166`). Le message apparaît donc
+dans le formulaire, sans rechargement.
+
+Le noyau consomme lui-même l'action `rcp_form_errors`
+(`core/includes/registration-functions.php:148`) pour valider son captcha
+(`core/includes/captcha-functions.php:157`) : le précédent d'usage est établi.
+
+**Conséquence** : le blocage d'inscription se branche sur `rcp_form_errors` et
+ajoute une erreur à `rcp_errors()`, sans rien rendre lui-même. Cahier des
+charges §7.5 et FNC-07.
+
+---
+
+## JE-010 — Sans `$post` global, `rcp_user_can_access()` accorde l'accès
+
+**Date** : 22 septembre 2026 · **Version** : 3.5.51.
+
+Appelée sans identifiant de contenu et hors d'une boucle, la fonction ne trouve
+pas de `$post` global et renvoie `true` sans consulter la moindre restriction
+(`core/includes/member-functions.php:78-86`), avec ce commentaire du noyau :
+« If we can't find a global `$post` object, assume the user can access the
+page. »
+
+Le comportement n'est pas anormal — c'est un choix défendable pour un contexte
+indéterminé — mais il est piégeux pour un test : une assertion d'accès refusé
+écrite sans identifiant explicite passerait au vert pour une raison sans rapport
+avec ce qu'elle prétend vérifier.
+
+**Conséquence** : tout test des suites `access` et `contract` passe un
+identifiant de contenu explicite. Aucune assertion d'accès ne repose sur le
+`$post` global.
+
+---
+
+## JE-011 — L'add-on de référence est absent du checkout, et sa documentation n'est pas datable
+
+**Date** : 22 septembre 2026.
+
+Le checkout de Restrict Content Pro v3.5.51 disponible localement ne contient
+pas l'add-on IP Restriction : son répertoire `pro/addons/` ne contient que
+`custom-redirects` et `index.php`. Le développement en salle blanche (cahier des
+charges §0.3) est donc aussi un fait matériel, pas seulement une règle.
+
+Par ailleurs, aucune des pages de documentation consultées ne porte de numéro de
+version ni de date de mise à jour : leur fraîcheur n'est pas datable. L'annonce
+d'origine de l'add-on renvoyait un code HTTP 410 au moment de la recherche, et
+son contenu n'a pas été récupéré.
+
+**Conséquence** : l'annexe A du cahier des charges est une référence
+fonctionnelle, pas une spécification, et l'annexe B énumère explicitement ce que
+la source **ne dit pas**, pour qu'aucun silence ne soit lu comme un accord.
+C'est aussi pourquoi V-02 et V-03 restent ouverts par construction.
+
+---
+
+## JE-012 — `phpcov merge` sort en succès sans écrire aucun rapport
+
+**Date** : 22 septembre 2026 · **Contexte** : fusion des mesures de couverture.
+
+`phpcov merge` était l'outil prévu par le cahier des charges §11.6. Sur cette
+combinaison de versions, il sort avec le code 0 sans écrire le moindre rapport
+et sans le moindre message.
+
+La cause est la même que celle de JE-001, par un autre chemin.
+`processUncoveredFiles` demande à `php-code-coverage` d'**inclure** les fichiers
+jamais exécutés, afin d'en compter les lignes exécutables — sans quoi un fichier
+non testé n'apparaîtrait pas du tout, et le pourcentage mesurerait la couverture
+de ce qui est couvert. Or chaque fichier du plugin commence par la garde d'accès
+direct de SEC-15 : hors WordPress, `ABSPATH` n'existe pas, l'inclusion appelle
+`exit`, et le processus meurt en silence.
+
+**Conséquence** : `bin/lib/merge-coverage.php` définit `ABSPATH` avant toute
+inclusion (lignes 27-40) et passe directement par les classes de
+`php-code-coverage`, que `phpcov` ne fait qu'envelopper. L'outil enveloppant
+n'offrait aucun moyen d'intervenir avant l'inclusion.
+
+Ce constat et JE-001 partagent une morale : **la garde `ABSPATH` transforme
+toute inclusion hors WordPress en arrêt silencieux à succès**. Tout outil qui
+inclut les fichiers du plugin en dehors de WordPress doit définir `ABSPATH` au
+préalable. C'est le prix de SEC-15, et il vaut d'être payé sciemment.

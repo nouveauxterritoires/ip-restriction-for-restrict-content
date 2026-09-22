@@ -1,0 +1,242 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  schedule:
+    # Quotidien : la suite `contract` est exécutée contre la dernière version
+    # publiée de la dépendance, pour que sa rupture soit vue avant les
+    # utilisateurs (conventions §8).
+    - cron: '17 4 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSER_NO_INTERACTION: 1
+
+jobs:
+
+  lint:
+    name: Style et analyse statique
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2
+      - name: Dépendances
+        run: composer install --prefer-dist
+      - name: PHPCS
+        run: vendor/bin/phpcs --report-full --report-summary
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+  security:
+    name: Sécurité
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2
+      - name: Dépendances
+        run: composer install --prefer-dist
+      - name: Vulnérabilités connues des dépendances
+        run: composer audit
+      - name: Secrets
+        run: bash bin/scan-secrets.sh
+      - name: Fausse complétion
+        run: bash bin/scan-placeholders.sh
+
+  unit:
+    name: Suite unit — PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [ '8.1', '8.2', '8.3' ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+      - name: Dépendances
+        run: composer install --prefer-dist
+      - name: Suite unit
+        run: bash bin/run-suite.sh unit
+
+  integration:
+    name: Suite integration — WordPress ${{ matrix.wp }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wp: [ 'latest', '6.4' ]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports: [ '3306:3306' ]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      WP_TESTS_DB_HOST: 127.0.0.1
+      WP_TESTS_DB_NAME: wordpress_test
+      WP_TESTS_DB_USER: root
+      WP_TESTS_DB_PASSWORD: root
+      WP_TESTS_DIR: ${{ runner.temp }}/wp-tests/lib
+      WP_CORE_DIR: ${{ runner.temp }}/wp-tests/core
+      WP_VERSION: ${{ matrix.wp }}
+      RCP_VARIANT: free
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2
+      # `bin/install-wp-tests.sh` récupère la bibliothèque de tests par
+      # Subversion, qui n'est plus préinstallé sur les images GitHub récentes.
+      - name: Subversion
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends subversion
+      - name: Dépendances
+        run: composer install --prefer-dist
+      - name: Bibliothèque de tests et dépendance d'adhésions
+        run: bash bin/install-wp-tests.sh
+      - name: Suite integration
+        run: bash bin/run-suite.sh integration
+
+  contract:
+    name: Suite contract — Restrict Content
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports: [ '3306:3306' ]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      WP_TESTS_DB_HOST: 127.0.0.1
+      WP_TESTS_DB_NAME: wordpress_test
+      WP_TESTS_DB_USER: root
+      WP_TESTS_DB_PASSWORD: root
+      WP_TESTS_DIR: ${{ runner.temp }}/wp-tests/lib
+      WP_CORE_DIR: ${{ runner.temp }}/wp-tests/core
+      RCP_VARIANT: free
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2
+      - name: Subversion
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends subversion
+      - name: Dépendances
+        run: composer install --prefer-dist
+      - name: Bibliothèque de tests et dépendance d'adhésions
+        run: bash bin/install-wp-tests.sh
+      - name: Suite contract
+        run: bash bin/run-suite.sh contract
+
+  coverage:
+    name: Couverture et seuil
+    runs-on: ubuntu-latest
+    needs: [ unit, integration ]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports: [ '3306:3306' ]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      WP_TESTS_DB_HOST: 127.0.0.1
+      WP_TESTS_DB_NAME: wordpress_test
+      WP_TESTS_DB_USER: root
+      WP_TESTS_DB_PASSWORD: root
+      WP_TESTS_DIR: ${{ runner.temp }}/wp-tests/lib
+      WP_CORE_DIR: ${{ runner.temp }}/wp-tests/core
+      RCP_VARIANT: free
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: xdebug
+          tools: composer:v2
+      - name: Subversion
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends subversion
+      - name: Dépendances
+        run: composer install --prefer-dist
+      - name: Bibliothèque de tests et dépendance d'adhésions
+        run: bash bin/install-wp-tests.sh
+      - name: Mesure
+        # Seules les suites qui contiennent des tests sont mesurées : une suite
+        # vide produirait un taux partiel trompeur (JE-001). Cette liste s'étend
+        # à mesure que les suites métier se remplissent.
+        run: SUITES="unit integration" bash bin/coverage.sh
+      - name: Seuil
+        run: bash bin/check-coverage.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: couverture
+          path: tests/coverage/
+
+  i18n:
+    name: Fraîcheur du .pot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2, wp-cli
+      - name: Régénération
+        run: wp i18n make-pot . /tmp/attendu.pot --slug=ip-restriction-for-restrict-content --allow-root
+      - name: Comparaison
+        # `POT-Creation-Date` change à chaque génération : seule la différence
+        # des chaînes compte.
+        run: |
+          normalise() { grep -v '^"POT-Creation-Date' "$1"; }
+          diff <(normalise languages/ip-restriction-for-restrict-content.pot) <(normalise /tmp/attendu.pot) \
+            || { echo "::error::languages/ip-restriction-for-restrict-content.pot n'est pas à jour. Exécutez : make pot"; exit 1; }
+
+  build:
+    name: Archive distribuable
+    runs-on: ubuntu-latest
+    needs: [ lint, security, unit, integration ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2
+      - name: Construction
+        run: bash bin/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archive
+          path: dist/*.zip

@@ -1,0 +1,15 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - src
+        - ip-restriction-for-restrict-content.php
+        - uninstall.php
+    scanDirectories:
+        # Classes et fonctions de Restrict Content / Restrict Content Pro,
+        # fournies à l'exécution. Générées par bin/generate-stubs.sh ; jamais
+        # éditées à la main (cahier des charges §12.4).
+        - stubs
+    treatPhpDocTypesAsCertain: false

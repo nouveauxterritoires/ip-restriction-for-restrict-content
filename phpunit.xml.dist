@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+    bootstrap="tests/bootstrap.php"
+    colors="true"
+    beStrictAboutTestsThatDoNotTestAnything="true"
+    beStrictAboutOutputDuringTests="true"
+    failOnWarning="true"
+    failOnRisky="true"
+    convertDeprecationsToExceptions="true">
+
+    <testsuites>
+        <!-- WordPress mocké (Brain Monkey) : logique pure, outillage. -->
+        <testsuite name="unit">
+            <directory suffix="Test.php">tests/unit</directory>
+        </testsuite>
+        <!-- WordPress réel : amorçage, schéma, gabarits, écrans. -->
+        <testsuite name="integration">
+            <directory suffix="Test.php">tests/integration</directory>
+        </testsuite>
+        <!-- Restrict Content / Restrict Content Pro réels : matrice de capacités. -->
+        <testsuite name="contract">
+            <directory suffix="Test.php">tests/contract</directory>
+        </testsuite>
+
+        <!-- Suites métier : un domaine à fort risque par suite. -->
+        <testsuite name="matching">
+            <directory suffix="Test.php">tests/matching</directory>
+        </testsuite>
+        <testsuite name="access">
+            <directory suffix="Test.php">tests/access</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- Les rapports sont demandés explicitement en ligne de commande
+         (`make coverage`), afin qu'une suite ciblée n'affiche pas un taux
+         partiel trompeur. -->
+    <coverage processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+    </coverage>
+
+    <php>
+        <env name="WP_TESTS_DIR" value="/wp-tests/lib"/>
+    </php>
+</phpunit>

@@ -1,0 +1,40 @@
+# Dépendances
+/vendor/
+/node_modules/
+
+# Sources et archives propriétaires (Restrict Content Pro) — ne jamais versionner.
+# RCP Pro est un produit commercial : ni son archive ni son code ne doivent
+# entrer dans ce dépôt.
+/vendor-plugins/*
+!/vendor-plugins/.gitkeep
+/restrict-content-pro/
+/**/restrict-content-pro/
+
+# Le code de l'add-on commercial équivalent n'entre jamais ici : le
+# développement est mené en salle blanche (cahier des charges §0.3).
+
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Artefacts de build et de test
+/assets/js/dist/
+/tests/coverage/
+/tests/results/
+/dist/
+/build/
+.phpunit.result.cache
+.phpcs-cache
+*.zip
+
+# Environnement local
+/.idea/
+/.vscode/
+.DS_Store
+*.log
+
+# OMC
+/.omc/
