@@ -18,6 +18,7 @@ defined( 'ABSPATH' ) || exit;
 
 use Ip_Restriction_For_Restrict_Content\Admin\Capability_Status_Page;
 use Ip_Restriction_For_Restrict_Content\Admin\Dependency_Labels;
+use Ip_Restriction_For_Restrict_Content\Admin\Level_Field;
 use Ip_Restriction_For_Restrict_Content\Admin\Rejection_Notice;
 use Ip_Restriction_For_Restrict_Content\Admin\Requirements_Notice;
 use Ip_Restriction_For_Restrict_Content\Admin\Settings_Page;
@@ -190,6 +191,14 @@ final class Plugin {
 		 * un.
 		 */
 		( new Registration_Guard( $repository ) )->register();
+
+		/*
+		 * Le champ de niveau est accroché aux écrans de la dépendance, qui
+		 * n'existent qu'en administration — mais l'accrochage, lui, coûte deux
+		 * `add_action` et rien de plus : le tester ici ferait dépendre le
+		 * branchement d'un contexte que la sonde ne garantit pas.
+		 */
+		( new Level_Field( $repository ) )->register();
 	}
 
 	/**

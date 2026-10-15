@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-15T15:37:21+00:00\n"
+"POT-Creation-Date: 2026-10-15T16:32:51+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ip-restriction-for-restrict-content\n"
@@ -157,6 +157,14 @@ msgstr ""
 msgid "Pour y remédier : dans l'administration de Restrict Content, repassez sur sa base de code moderne. Ce plugin repart dès la requête suivante, sans réactivation ni réenregistrement."
 msgstr ""
 
+#: src/Admin/Level_Field.php:144
+msgid "Liste d'autorisation par adresse IP"
+msgstr ""
+
+#: src/Admin/Level_Field.php:149
+msgid "Une entrée par ligne. Ces adresses accèdent aux contenus restreints à ce niveau, et à eux seuls : une autorisation posée ici ne donne aucun accès aux contenus d'un autre niveau."
+msgstr ""
+
 #: src/Admin/Rejection_Labels.php:35
 msgid "les deux bornes de la plage ne sont pas de la même famille d'adresses"
 msgstr ""
@@ -197,31 +205,37 @@ msgstr ""
 msgid "cette entrée ne correspond à aucune forme acceptée"
 msgstr ""
 
-#: src/Admin/Rejection_Notice.php:82
+#: src/Admin/Rejection_Notice.php:78
 #: src/Admin/Settings_Page.php:280
 msgid "Liste d'autorisation globale"
 msgstr ""
 
-#: src/Admin/Rejection_Notice.php:83
+#: src/Admin/Rejection_Notice.php:79
 #: src/Admin/Settings_Page.php:289
 msgid "Liste de blocage d'inscription"
 msgstr ""
 
-#: src/Admin/Rejection_Notice.php:84
+#: src/Admin/Rejection_Notice.php:80
 #: src/Admin/Settings_Page.php:318
 msgid "Proxys de confiance"
 msgstr ""
 
-#: src/Admin/Rejection_Notice.php:88
+#: src/Admin/Rejection_Notice.php:89
 msgid "Restriction par adresse IP : des entrées sont ignorées."
 msgstr ""
 
-#: src/Admin/Rejection_Notice.php:90
+#: src/Admin/Rejection_Notice.php:91
 msgid "Une entrée ignorée ne correspond à aucune adresse : elle n'accorde aucun accès et ne bloque aucune inscription."
 msgstr ""
 
+#. translators: nom du niveau d'adhésion.
+#: src/Admin/Rejection_Notice.php:127
+#, php-format
+msgid "Niveau « %s »"
+msgstr ""
+
 #. translators: 1: nom du champ, 2: numéro de ligne, 3: entrée refusée, 4: motif du refus.
-#: src/Admin/Rejection_Notice.php:118
+#: src/Admin/Rejection_Notice.php:155
 #, php-format
 msgid "%1$s, ligne %2$d — « %3$s » ignorée : %4$s"
 msgstr ""
@@ -317,13 +331,13 @@ msgid "la chaîne de transfert ne contient que des proxys déclarés"
 msgstr ""
 
 #. translators: 1: version de PHP requise, 2: version installée.
-#: src/Plugin.php:87
+#: src/Plugin.php:88
 #, php-format
 msgid "PHP %1$s ou plus récent (version installée : %2$s)"
 msgstr ""
 
 #. translators: 1: version de WordPress requise, 2: version installée.
-#: src/Plugin.php:93
+#: src/Plugin.php:94
 #, php-format
 msgid "WordPress %1$s ou plus récent (version installée : %2$s)"
 msgstr ""

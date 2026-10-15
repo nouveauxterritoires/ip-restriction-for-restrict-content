@@ -12,8 +12,15 @@
  * `update_option()` le sont par construction. C'est la décision O-08, rendue au
  * lot 4 et motivée par ADR-0009.
  *
- * Aucune requête SQL directe : tout passe par l'API d'options (SEC-04), et un
- * test de la suite `unit` échoue si `$wpdb` apparaît dans `src/`.
+ * Les listes d'autorisation **par niveau d'adhésion** sont rangées ailleurs : en
+ * métadonnée de niveau, par l'interface de la dépendance (§6.3, ADR-0004). La
+ * réutiliser fait que la suppression d'un niveau emporte son réglage, sans code
+ * de nettoyage — et sans réglage orphelin qui accorderait un accès au niveau
+ * suivant à porter le même identifiant.
+ *
+ * Aucune requête SQL directe : tout passe par les API d'options et de
+ * métadonnées (SEC-04), et un test de la suite `unit` échoue si `$wpdb`
+ * apparaît dans `src/`.
  *
  * @package Ip_Restriction_For_Restrict_Content
  */
@@ -48,6 +55,15 @@ final class Settings_Repository {
 	public const VERSION_OPTION = 'ip_restriction_for_restrict_content_version';
 
 	/**
+	 * Clé de la métadonnée de niveau qui porte sa liste d'autorisation.
+	 *
+	 * Forme courte du préfixe, comme toute métadonnée (ADR-0001).
+	 *
+	 * @var string
+	 */
+	public const LEVEL_META_KEY = 'rcipr_ip_allow_list';
+
+	/**
 	 * Lit les réglages.
 	 *
 	 * @return Settings Les réglages stockés, ou les valeurs par défaut.
@@ -67,5 +83,61 @@ final class Settings_Repository {
 	public function save( Settings $settings ): void {
 		update_option( self::OPTION, $settings->to_array() );
 		update_option( self::VERSION_OPTION, RCIPR_VERSION );
+	}
+
+	/**
+	 * Lit la liste d'autorisation d'un niveau d'adhésion.
+	 *
+	 * @param int $level_id Identifiant du niveau.
+	 * @return string Liste, une entrée par ligne ; chaîne vide s'il n'y en a pas.
+	 */
+	public function load_level_list( int $level_id ): string {
+		$stored = rcp_get_membership_level_meta( $level_id, self::LEVEL_META_KEY, true );
+
+		return is_string( $stored ) ? $stored : '';
+	}
+
+	/**
+	 * Écrit la liste d'autorisation d'un niveau d'adhésion.
+	 *
+	 * Une liste vide **supprime** la métadonnée plutôt que d'écrire une chaîne
+	 * vide : un réglage absent et un réglage vide doivent se lire pareil, et
+	 * l'absence est la forme qui ne laisse rien derrière elle.
+	 *
+	 * @param int    $level_id Identifiant du niveau.
+	 * @param string $text     Liste, une entrée par ligne.
+	 * @return void
+	 */
+	public function save_level_list( int $level_id, string $text ): void {
+		if ( '' === $text ) {
+			rcp_delete_membership_level_meta( $level_id, self::LEVEL_META_KEY );
+
+			return;
+		}
+
+		rcp_update_membership_level_meta( $level_id, self::LEVEL_META_KEY, $text );
+	}
+
+	/**
+	 * Listes d'autorisation de tous les niveaux qui en portent une.
+	 *
+	 * Sert au signalement des entrées refusées (FNC-22) : un avis qui ne
+	 * couvrirait que la liste globale laisserait une ligne inerte sans aucun
+	 * signe sur un écran de niveau.
+	 *
+	 * @return array<int, string> Listes indexées par identifiant de niveau.
+	 */
+	public function level_lists(): array {
+		$lists = array();
+
+		foreach ( rcp_get_membership_levels( array( 'number' => 0 ) ) as $level ) {
+			$text = $this->load_level_list( (int) $level->get_id() );
+
+			if ( '' !== trim( $text ) ) {
+				$lists[ (int) $level->get_id() ] = $text;
+			}
+		}
+
+		return $lists;
 	}
 }

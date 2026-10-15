@@ -74,14 +74,15 @@ final class Rejection_Notice {
 		$settings  = $this->repository->load();
 		$validated = Settings_Validator::validate( $settings->to_array() );
 
-		if ( ! $validated->has_rejections() ) {
-			return;
-		}
-
 		$items = ''
 			. $this->items( __( 'Liste d\'autorisation globale', 'ip-restriction-for-restrict-content' ), $validated->allow_list_rejections() )
 			. $this->items( __( 'Liste de blocage d\'inscription', 'ip-restriction-for-restrict-content' ), $validated->block_list_rejections() )
-			. $this->items( __( 'Proxys de confiance', 'ip-restriction-for-restrict-content' ), $validated->trusted_proxies_rejections() );
+			. $this->items( __( 'Proxys de confiance', 'ip-restriction-for-restrict-content' ), $validated->trusted_proxies_rejections() )
+			. $this->level_items();
+
+		if ( '' === $items ) {
+			return;
+		}
 
 		wp_admin_notice(
 			'<p><strong>'
@@ -95,6 +96,42 @@ final class Rejection_Notice {
 				'paragraph_wrap'     => false,
 			)
 		);
+	}
+
+	/**
+	 * Compose les éléments refusés des listes de niveau.
+	 *
+	 * Un avis qui ne couvrirait que les listes globales laisserait une ligne
+	 * inerte sans aucun signe sur un écran de niveau — et une ligne inerte dans
+	 * une liste d'autorisation de niveau est exactement aussi silencieuse que
+	 * dans la liste globale.
+	 *
+	 * @return string Balisage des éléments.
+	 */
+	private function level_items(): string {
+		$items = '';
+
+		foreach ( $this->repository->level_lists() as $level_id => $text ) {
+			$rejections = Settings_Validator::validate( array( 'allow_list' => $text ) )->allow_list_rejections();
+
+			if ( array() === $rejections ) {
+				continue;
+			}
+
+			$level = rcp_get_membership_level( $level_id );
+			$name  = $level ? $level->get_name() : (string) $level_id;
+
+			$items .= $this->items(
+				sprintf(
+					/* translators: nom du niveau d'adhésion. */
+					__( 'Niveau « %s »', 'ip-restriction-for-restrict-content' ),
+					$name
+				),
+				$rejections
+			);
+		}
+
+		return $items;
 	}
 
 	/**
