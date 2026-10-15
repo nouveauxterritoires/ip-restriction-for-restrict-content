@@ -3,8 +3,8 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 7** : les cinq suites sont peuplées — `unit` (79 tests),
-`integration` (26), `contract` (36), `matching` (140) et `access` (81). Chacune
+**État au lot 8** : les cinq suites sont peuplées — `unit` (79 tests),
+`integration` (26), `contract` (36), `matching` (143) et `access` (102). Chacune
 a son job d'intégration continue, et la suite `contract` est exécutée par les
 jobs `contract-free` et `contract-pro` : **les deux ont tourné et sont verts**
 depuis le 15 octobre 2026, ce qui a levé le point ouvert V-10.
@@ -215,17 +215,20 @@ qu'ici serait mentir sur ce qu'ils établissent.
 
 ### 2.5 `access` — le comportement observable
 
-**Peuplée aux lots 4 à 7** : `SettingsScreenTest`, `RejectionNoticeTest`,
-`ContentAccessTest`, `ExtensionPointsTest`, `RegistrationBlockTest` et
-`LevelScopeTest` — 81 tests. Les tests du lot 5
-passent par `rcp_user_can_access()`, la fonction de la dépendance, et non par la
-politique interne : ce qui compte est le comportement observable, moteur et
-branchement compris. C'est aussi la suite qui a levé V-01. Ils portent ce qui garde l'écriture des réglages, parce qu'un écran
-qui accorde des accès est une surface d'attaque : qui peut y écrire peut ouvrir
-tout le contenu restreint du site. L'ordre des contrôles y est testé pour
-lui-même — une requête à la fois sans droit et sans nonce doit être refusée
-**pour le nonce** (SEC-01). Le reste du tableau ci-dessous attend les lots 5
-à 9.
+**Peuplée aux lots 4 à 8** : `SettingsScreenTest`, `RejectionNoticeTest`,
+`ContentAccessTest`, `ExtensionPointsTest`, `RegistrationBlockTest`,
+`LevelScopeTest` et `PostScopeTest` — 102 tests. Les tests d'accès passent par
+`rcp_user_can_access()`, la fonction de la dépendance, et non par la politique
+interne : ce qui compte est le comportement observable, moteur et branchement
+compris. C'est aussi la suite qui a levé V-01.
+
+Les tests d'écran, eux, portent ce qui garde l'écriture des réglages, parce
+qu'un écran qui accorde des accès est une surface d'attaque : qui peut y écrire
+peut ouvrir tout le contenu restreint du site. L'ordre des contrôles y est testé
+pour lui-même — une requête à la fois sans droit et sans nonce doit être refusée
+**pour le nonce** (SEC-01) — et la capacité l'est **sur l'objet enregistré** :
+c'est tout l'objet du test de contournement par identifiant (SEC-02). Le reste
+du tableau ci-dessous attend le lot 9.
 
 **Ce qu'elle doit établir**, sur un site réel, avec des niveaux et des contenus
 réellement restreints :
@@ -236,14 +239,14 @@ réellement restreints :
 | Portée par niveau | Autorisation sur « Argent » : le contenu réservé à « Argent » est lisible |
 | Non-transitivité | **Le test central, livré au lot 7.** Autorisation sur « Argent », contenu réservé à « Or » : refusé. Et la contrepartie : la même autorisation ouvre bien les contenus d'« Argent » |
 | Cumul | **Livré au lot 7**, premier lot où l'exigence est vérifiable : une seule portée satisfaite suffit, deux n'ont pas d'effet supplémentaire, et la portée rapportée est la plus large — c'est elle qui explique l'accès |
-| Portée par contenu | Autorisation sur le contenu A : A est lisible, B ne l'est pas |
-| Adhésion expirée | **V-01, levé au lot 5** : l'autorisation l'emporte sur une adhésion expirée, établi avec un client et une adhésion au statut `expired` (JE-022). Le volet « autorisation posée sur le niveau » se jouera au lot 7 |
+| Portée par contenu | **Livré au lot 8** : autorisation sur le contenu A, A est lisible et B ne l'est pas — FNC-04 pour la seconde portée. Et la liste du contenu se range en métadonnée protégée, vérifiée par `is_protected_meta()` |
+| Adhésion expirée | **V-01, levé dans ses deux volets** : au lot 5 pour l'autorisation globale, au lot 7 pour celle posée sur le niveau, établis avec un client et une adhésion au statut `expired` (JE-022) |
 | Blocage d'inscription | La soumission est rejetée, et le message apparaît par le canal de la dépendance |
 | Asymétrie | Une adresse en liste de blocage seule n'obtient **aucun** accès au contenu, et une adresse en liste d'autorisation seule n'est **pas** bloquée à l'inscription (A-01) |
 | Entrée rejetée | Une entrée invalide dans la liste de blocage produit l'avis persistant (A-03, SEC-11) |
 | Autorisation et capacités | Une adresse autorisée n'obtient aucune capacité WordPress ; l'administration reste fermée (SEC-13) |
 | Nonce et capacité | Enregistrement des réglages sans nonce, avec nonce d'une autre action, sans capacité : refusé dans les trois cas (SEC-01) |
-| Contournement par identifiant | Enregistrement de la liste d'un contenu avec l'identifiant d'une publication qu'on ne peut pas modifier : refusé (SEC-02) |
+| Contournement par identifiant | **Le test central du lot 8.** La même soumission authentique — nonce valide, capacité d'édition réelle — est rejouée avec l'identifiant d'une publication que l'auteur ne peut pas modifier : refusée là, acceptée sur son propre contenu, ce qui établit que c'est l'identifiant qui a été refusé et non la soumission (SEC-02) |
 | Échappement | Un message de blocage porteur de balises est rendu inerte (SEC-03) |
 | Cache | Une réponse élargie par une autorisation porte le marquage de non-cachabilité (SEC-14) |
 | Réponse minimale | Le message de blocage ne contient ni l'adresse, ni le texte d'une règle (SEC-17) |
@@ -300,15 +303,15 @@ couvert par `tests/unit/Tooling/ScannersTest.php`, qui **exécute** le scanner.
 | `src/Address/`, `src/Rule/`, `src/Policy/` | 100 % des lignes et des branches | `bin/check-coverage.sh` pour les lignes, `bin/lib/check-branches.php` pour les branches |
 | D'une version à l'autre | Aucune régression | `.coverage-baseline` |
 
-**Sept lignes ne sont pas couvertes, et ne peuvent pas l'être dans ce
-harnais.** Six sont dans `src/Plugin.php` : la branche des prérequis absents, et
+**Six lignes ne sont pas couvertes, et ne peuvent pas l'être dans ce
+harnais.** Cinq sont dans `src/Plugin.php` : la branche des prérequis absents, et
 l'indication d'action qu'elle seule appelle. Un processus qui charge la
 dépendance ne peut pas l'exercer, et PHP ne retire pas une fonction déjà définie
 — c'est la même limite qu'en §2.2. Ce qu'elle produit est établi autrement : la
 suite `unit` exerce l'avis de prérequis et ses libellés, la suite `integration`
 établit qu'un diagnostic de branche historique produit bien le bon avis.
 
-La septième est l'appel à `nocache_headers()` de `Integration\Cache_Guard`,
+La sixième est l'appel à `nocache_headers()` de `Integration\Cache_Guard`,
 gardé par `! headers_sent()`. Dans un processus PHPUnit, la sortie a déjà
 commencé dès le premier point de progression : la garde est donc toujours fausse.
 L'alternative — appeler `nocache_headers()` sans garde — produirait un

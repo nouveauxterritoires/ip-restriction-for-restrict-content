@@ -5,6 +5,49 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 8 : portée par contenu. **Les trois portées d'autorisation existent**, et
+aucune des deux étroites n'est transitive.
+
+### Ajouté
+
+- Champ de liste d'autorisation dans la boîte de restriction de la dépendance,
+  par l'accroche qu'elle expose après ses propres champs (FNC-26). La liste se
+  lit à côté de la restriction qu'elle contourne, et non sur un autre écran.
+- **FNC-03 et FNC-04 pour la seconde portée** : `Access_Policy::decide()` ne
+  reçoit que la liste du contenu demandé — par la même économie qu'aux niveaux,
+  une autorisation posée sur un autre contenu n'est pas même consultée.
+- **SEC-02, et son test de contournement par identifiant.** L'enregistrement
+  exige le nonce de la boîte de la dépendance, puis la capacité `edit_post`
+  **sur le contenu enregistré**. Le test rejoue une soumission authentique — nonce
+  valide, capacité d'édition bien réelle sur son propre article — en substituant
+  l'identifiant d'un contenu qui n'est pas le sien : refusée là, acceptée ici.
+  Vérifier la capacité « en général » aurait laissé un contributeur poser une
+  autorisation d'accès sur n'importe quel contenu du site.
+- Stockage en métadonnée de publication `_rcipr_ip_allow_list` (§6.4). Le
+  préfixe de soulignement la retire de l'interface des champs personnalisés, où
+  ni nonce ni capacité propre ne la garderaient ; un test le vérifie par
+  `is_protected_meta()` plutôt que par la convention. La suppression du contenu
+  emporte la liste — WordPress s'en charge, contrairement aux métadonnées de
+  niveau (JE-025).
+- Les entrées refusées d'une liste de contenu sont signalées **sur l'écran
+  d'édition**, là où la ligne a été saisie (FNC-22). C'est aussi le seul endroit
+  qui ne coûte rien : énumérer les contenus porteurs d'une liste demanderait une
+  requête non bornée, là où les niveaux se comptent sur une main (JE-026).
+- La liste du contenu passe par le point d'extension des règles, avec sa portée
+  et l'identifiant du contenu.
+- `.coverage-baseline` passe de 99,43 % à 99,46 %.
+
+### Documentation
+
+- JE-026 : la dépendance vérifie déjà nonce et capacité avant de déclencher son
+  action d'enregistrement — et c'est précisément pourquoi le plugin les vérifie
+  aussi. Faire reposer notre garde sur la leur ferait de notre sécurité une
+  propriété du code d'un tiers, qu'une version suivante peut changer sans
+  prévenir.
+- `docs/tests.md` ramène le compte des lignes non couvrables de sept à six.
+
+---
+
 Lot 7 : portée par niveau d'adhésion. **Deux portées d'autorisation sur trois**
 existent désormais, et elles ne sont pas transitives.
 

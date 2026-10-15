@@ -934,3 +934,46 @@ Deux tests figent le constat : l'un vérifie que **notre** nettoyage fonctionne,
 l'autre que la dépendance seule laisse bien la métadonnée. Le jour où l'amont
 nettoiera, le second échouera — et ce sera une bonne nouvelle, qui permettra de
 retirer du code.
+
+---
+
+## JE-026 — La dépendance garde déjà sa boîte de métadonnées, et ce n'est pas une raison de ne pas la garder
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 8, portée par contenu.
+
+Lecture de `core/includes/admin/metabox.php` de Restrict Content 4.0.5 :
+`rcp_render_meta_box()` émet un champ caché `rcp_meta_box` portant
+`wp_create_nonce( basename( __FILE__ ) )`, soit l'action `metabox.php`, **avant**
+l'accroche `rcp_metabox_fields_after` où notre champ s'insère ; et
+`rcp_save_meta_data()`, accrochée à `save_post`, vérifie ce nonce, écarte les
+enregistrements automatiques, puis vérifie `edit_page` ou `edit_post` **sur
+l'identifiant enregistré** avant de déclencher `do_action( 'rcp_save_post_meta',
+$post_id )`.
+
+Autrement dit : au moment où notre gestionnaire s'exécute, les deux contrôles
+que SEC-02 exige ont déjà eu lieu. La tentation est de n'en refaire aucun.
+
+**Nous les refaisons tous les deux**, pour trois raisons constatées et non
+supposées :
+
+1. `rcp_save_post_meta` est une action publique. Tout code — la dépendance
+   demain, une autre extension aujourd'hui — peut la déclencher avec un
+   identifiant arbitraire, sans être passé par le formulaire.
+2. La garde de la dépendance est une propriété de **son** code. Elle n'est
+   couverte par aucun de nos tests, et une version suivante peut la déplacer
+   sans que rien chez nous ne le signale. Faire reposer notre sécurité dessus
+   la rendrait invérifiable depuis notre dépôt.
+3. Le contrôle est à deux appels de fonction, et le défaut qu'il évite est une
+   écriture d'autorisation d'accès par qui n'y a pas droit — la catégorie que le
+   §4.6 classe comme la plus grave, parce qu'elle est silencieuse.
+
+Notre nonce est en revanche **le sien** : notre champ vit dans son formulaire,
+et en exiger un second reviendrait à en ajouter un deuxième au même envoi, sans
+rien garder de plus.
+
+**Au passage**, deux constats sur la même lecture : la dépendance lit
+`$_POST['post_type']` sans vérifier sa présence, ce qui produit une notice sur
+un enregistrement programmatique ; et elle vérifie `edit_page` pour les pages là
+où `current_user_can( 'edit_post', $id )` suffit, WordPress résolvant la
+capacité par le type du contenu. Nous n'utilisons donc qu'`edit_post`, et un
+test établit qu'un auteur peut modifier le sien et pas celui d'un autre.

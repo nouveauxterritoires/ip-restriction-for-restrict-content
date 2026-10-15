@@ -9,10 +9,11 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Deux portées d'autorisation sur trois.** Les lots 0 à 7 sont livrés : une
-adresse peut être autorisée globalement ou **par niveau d'adhésion**, et une
-adresse de la liste de blocage ne peut pas s'inscrire. Il manque la portée par
-contenu et la couverture des taxonomies. Ce qui est livré et vérifié :
+**Les trois portées d'autorisation existent.** Les lots 0 à 8 sont livrés : une
+adresse peut être autorisée globalement, **par niveau d'adhésion** ou **par
+contenu**, et une adresse de la liste de blocage ne peut pas s'inscrire. Il
+manque la couverture des restrictions par taxonomie. Ce qui est livré et
+vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -38,12 +39,13 @@ contenu et la couverture des taxonomies. Ce qui est livré et vérifié :
 | Blocage d'inscription : une adresse de la liste ne peut pas soumettre le formulaire, avec un message avare et échappé | `src/Integration/Registration_Guard.php`, suite `access` |
 | Les deux listes ne partagent ni stockage, ni chemin de décision, ni instance (A-01) | `src/Policy/`, tests sur les signatures |
 | Portée par niveau d'adhésion : champ sur les écrans de niveau, stockage en métadonnée, et **non-transitivité** — une autorisation sur un niveau n'ouvre aucun autre niveau | `src/Admin/Level_Field.php`, `src/Policy/Access_Policy.php`, suite `access` |
-| Les cinq suites de tests sont peuplées — 362 tests | `phpunit.xml.dist`, `tests/` |
+| Portée par contenu : champ dans la boîte de restriction de la dépendance, stockage en métadonnée protégée, nonce **et** capacité vérifiée sur le contenu enregistré — un identifiant substitué dans la requête ne pose aucune autorisation | `src/Admin/Post_Metabox.php`, `src/Policy/Access_Policy.php`, suite `access` |
+| Les cinq suites de tests sont peuplées — 386 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
-**Rien d'autre.** La portée par contenu est le lot 8, la couverture des
-taxonomies le lot 9.
+**Rien d'autre.** La couverture des restrictions par taxonomie est le lot 9, la
+livraison le lot 10.
 
 ### Les trois portées ne se cumulent pas comme on le croit
 
@@ -51,11 +53,12 @@ taxonomies le lot 9.
 |---|---|---|
 | La liste globale | Tout contenu restreint du site, tous niveaux confondus | — |
 | Un niveau d'adhésion | Les contenus restreints **à ce niveau** | Les contenus d'un autre niveau, ni ceux restreints autrement (rôle, niveau d'accès) |
-| Un contenu | Ce seul contenu *(lot 8)* | — |
+| Un contenu | Ce seul contenu | Aucun autre contenu, même du même niveau ou du même auteur |
 
 Une autorisation de niveau n'est **pas** une autorisation globale restreinte :
 c'est une autorisation qui ne s'applique qu'aux contenus de ce niveau. Un
-contenu réservé à « Or » ne regarde jamais la liste d'« Argent ».
+contenu réservé à « Or » ne regarde jamais la liste d'« Argent », et un article
+ne regarde jamais la liste d'un autre article.
 
 ### Les deux listes ne se ressemblent que de loin
 
