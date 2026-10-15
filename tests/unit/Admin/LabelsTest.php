@@ -20,7 +20,9 @@ declare( strict_types = 1 );
 namespace Ip_Restriction_For_Restrict_Content\Tests\Unit\Admin;
 
 use Ip_Restriction_For_Restrict_Content\Admin\Capability_Labels;
+use Ip_Restriction_For_Restrict_Content\Admin\Dependency_Labels;
 use Ip_Restriction_For_Restrict_Content\Admin\Rejection_Labels;
+use Ip_Restriction_For_Restrict_Content\Domain\Dependency_Diagnosis;
 use Ip_Restriction_For_Restrict_Content\Domain\Capability_Catalogue;
 use Ip_Restriction_For_Restrict_Content\Rule\Rule_Rejection;
 use Ip_Restriction_For_Restrict_Content\Tests\Unit\UnitTestCase;
@@ -119,5 +121,26 @@ final class LabelsTest extends UnitTestCase {
 	 */
 	public function test_an_unknown_capability_state_falls_back_to_itself(): void {
 		$this->assertSame( 'etat_futur', Capability_Labels::state( 'etat_futur' ) );
+	}
+
+	/**
+	 * Les trois états de la dépendance ont chacun leur phrase.
+	 *
+	 * E-05 est une exigence de compréhensibilité : « absente » et « active sur
+	 * sa base de code historique » ne doivent pas se lire pareil, sans quoi
+	 * l'administrateur conclut que l'avis est faux et cherche ailleurs.
+	 *
+	 * @return void
+	 */
+	public function test_each_dependency_state_reads_differently(): void {
+		$usable = Dependency_Labels::state( Dependency_Diagnosis::from_observation( true, true ) );
+		$legacy = Dependency_Labels::state( Dependency_Diagnosis::from_observation( false, true ) );
+		$absent = Dependency_Labels::state( Dependency_Diagnosis::from_observation( false, false ) );
+
+		$this->assertNotSame( $usable, $legacy );
+		$this->assertNotSame( $legacy, $absent );
+		$this->assertNotSame( $usable, $absent );
+		$this->assertStringContainsString( 'historique', $legacy );
+		$this->assertStringContainsString( 'Aucune', $absent );
 	}
 }
