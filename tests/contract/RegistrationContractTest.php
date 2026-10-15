@@ -49,6 +49,16 @@ final class RegistrationContractTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	private function prepare_registration(): void {
+		/*
+		 * `rcp_errors()` est un `WP_Error` statique, partagé par tout le
+		 * processus : une erreur ajoutée par un test survit au suivant, et le
+		 * premier message enregistré pour un code masque les suivants
+		 * (JE-024). Le collecteur est donc vidé avant chaque préparation.
+		 */
+		foreach ( rcp_errors()->get_error_codes() as $code ) {
+			rcp_errors()->remove( $code );
+		}
+
 		$level_id = rcp_add_membership_level(
 			array(
 				'name'     => 'Contrat — niveau gratuit',

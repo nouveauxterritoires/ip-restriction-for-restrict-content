@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-15T14:09:29+00:00\n"
+"POT-Creation-Date: 2026-10-15T15:37:21+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ip-restriction-for-restrict-content\n"
@@ -317,13 +317,17 @@ msgid "la chaîne de transfert ne contient que des proxys déclarés"
 msgstr ""
 
 #. translators: 1: version de PHP requise, 2: version installée.
-#: src/Plugin.php:86
+#: src/Plugin.php:87
 #, php-format
 msgid "PHP %1$s ou plus récent (version installée : %2$s)"
 msgstr ""
 
 #. translators: 1: version de WordPress requise, 2: version installée.
-#: src/Plugin.php:92
+#: src/Plugin.php:93
 #, php-format
 msgid "WordPress %1$s ou plus récent (version installée : %2$s)"
+msgstr ""
+
+#: src/Support/Blocked_Message.php:45
+msgid "L'inscription n'est pas possible depuis cette connexion."
 msgstr ""

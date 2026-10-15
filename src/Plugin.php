@@ -27,6 +27,7 @@ use Ip_Restriction_For_Restrict_Content\Domain\Requirements;
 use Ip_Restriction_For_Restrict_Content\Integration\Cache_Guard;
 use Ip_Restriction_For_Restrict_Content\Integration\Capability_Probe;
 use Ip_Restriction_For_Restrict_Content\Integration\Content_Access;
+use Ip_Restriction_For_Restrict_Content\Integration\Registration_Guard;
 use Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository;
 
 /**
@@ -181,6 +182,14 @@ final class Plugin {
 		 * que soit le nombre de contenus élargis (SEC-14).
 		 */
 		( new Content_Access( $repository, new Cache_Guard() ) )->register();
+
+		/*
+		 * Le blocage d'inscription est branché séparément, sur sa propre
+		 * accroche et avec sa propre politique : A-01 interdit tout chemin
+		 * commun entre les deux listes, et le partage d'une instance en serait
+		 * un.
+		 */
+		( new Registration_Guard( $repository ) )->register();
 	}
 
 	/**

@@ -75,6 +75,45 @@ final class Extension_Points {
 	public const ACCESS_DECISION = 'ip_restriction_for_restrict_content_access_decision';
 
 	/**
+	 * Filtre : dernier mot sur le blocage d'inscription.
+	 *
+	 * Contrairement à `MATCH` et `ACCESS_DECISION`, ce filtre peut aussi
+	 * **ajouter** un blocage. L'asymétrie est celle du §4.6 : une erreur par
+	 * excès sur la liste d'autorisation est une fuite d'accès silencieuse et
+	 * durable, alors qu'une erreur par excès sur la liste de blocage refuse des
+	 * inscriptions légitimes — ce qui est bruyant, et donc corrigé.
+	 *
+	 * @var string
+	 */
+	public const REGISTRATION_BLOCKED = 'ip_restriction_for_restrict_content_registration_blocked';
+
+	/**
+	 * Filtre : message affiché lorsqu'une inscription est bloquée.
+	 *
+	 * Le retour est **échappé après le filtre**, et ce n'est pas une
+	 * précaution : la dépendance interpole le message dans son balisage sans
+	 * l'échapper (`core/includes/error-tracking.php:47`, JE-023). Un filtre est
+	 * du code tiers ; lui faire confiance pour l'échappement reviendrait à ne
+	 * pas échapper.
+	 *
+	 * @var string
+	 */
+	public const BLOCKED_MESSAGE = 'ip_restriction_for_restrict_content_blocked_message';
+
+	/**
+	 * Action : une inscription vient d'être bloquée.
+	 *
+	 * Le nom diffère de celui du filtre ci-dessus, et il le doit : WordPress
+	 * partage un seul registre entre actions et filtres, de sorte qu'un même
+	 * nom ferait appeler les greffons du filtre par l'action — et
+	 * réciproquement. Le cahier des charges §8.2 donnait le même nom aux deux ;
+	 * la correction est consignée là-bas.
+	 *
+	 * @var string
+	 */
+	public const REGISTRATION_BLOCK_APPLIED = 'ip_restriction_for_restrict_content_registration_block_applied';
+
+	/**
 	 * Action : un accès vient d'être accordé.
 	 *
 	 * Pour la journalisation par l'exploitant. L'adresse transmise est
