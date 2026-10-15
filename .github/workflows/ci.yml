@@ -96,8 +96,13 @@ jobs:
       WP_TESTS_DB_NAME: wordpress_test
       WP_TESTS_DB_USER: root
       WP_TESTS_DB_PASSWORD: root
-      WP_TESTS_DIR: ${{ runner.temp }}/wp-tests/lib
-      WP_CORE_DIR: ${{ runner.temp }}/wp-tests/core
+      # Chemins en dur, et non « ${{ runner.temp }} » : le contexte
+      # `runner` n'existe qu'une fois la machine attribuée, il n'est donc
+      # pas disponible dans un `env:` de job. GitHub rejette alors le
+      # fichier entier : aucun job n'est créé, et le seul message est
+      # « This run likely failed because of a workflow file issue ».
+      WP_TESTS_DIR: /tmp/wp-tests/lib
+      WP_CORE_DIR: /tmp/wp-tests/core
       WP_VERSION: ${{ matrix.wp }}
       RCP_VARIANT: free
     steps:
@@ -136,8 +141,8 @@ jobs:
       WP_TESTS_DB_NAME: wordpress_test
       WP_TESTS_DB_USER: root
       WP_TESTS_DB_PASSWORD: root
-      WP_TESTS_DIR: ${{ runner.temp }}/wp-tests/lib
-      WP_CORE_DIR: ${{ runner.temp }}/wp-tests/core
+      WP_TESTS_DIR: /tmp/wp-tests/lib
+      WP_CORE_DIR: /tmp/wp-tests/core
       RCP_VARIANT: free
     steps:
       - uses: actions/checkout@v4
@@ -199,8 +204,8 @@ jobs:
       WP_TESTS_DB_NAME: wordpress_test
       WP_TESTS_DB_USER: root
       WP_TESTS_DB_PASSWORD: root
-      WP_TESTS_DIR: ${{ runner.temp }}/wp-tests/lib
-      WP_CORE_DIR: ${{ runner.temp }}/wp-tests/core
+      WP_TESTS_DIR: /tmp/wp-tests/lib
+      WP_CORE_DIR: /tmp/wp-tests/core
       RCP_VARIANT: pro
       VENDOR_PLUGINS_DIR: ${{ github.workspace }}/vendor-plugins
     steps:
@@ -242,8 +247,8 @@ jobs:
       WP_TESTS_DB_NAME: wordpress_test
       WP_TESTS_DB_USER: root
       WP_TESTS_DB_PASSWORD: root
-      WP_TESTS_DIR: ${{ runner.temp }}/wp-tests/lib
-      WP_CORE_DIR: ${{ runner.temp }}/wp-tests/core
+      WP_TESTS_DIR: /tmp/wp-tests/lib
+      WP_CORE_DIR: /tmp/wp-tests/core
       RCP_VARIANT: free
     steps:
       - uses: actions/checkout@v4
