@@ -5,6 +5,80 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 3 : résolution de l'adresse du visiteur. Aucune fonctionnalité de
+restriction n'est encore livrée — le plugin sait maintenant quelle adresse
+évaluer, et personne ne lui demande encore de décider quoi que ce soit.
+
+### Ajouté
+
+- `Address\Client_Address_Resolver` : R-01 à R-07. Par défaut l'adresse évaluée
+  est celle de la connexion TCP, et rien d'autre ; un en-tête de transfert n'est
+  lu que si des proxys de confiance sont déclarés **et** que la connexion vient
+  de l'un d'eux ; la chaîne est alors remontée de droite à gauche en sautant les
+  proxys connus. Une liste d'autorisation évaluée sur une valeur que le visiteur
+  contrôle n'est pas un contrôle d'accès dégradé, c'est un contournement
+  d'authentification à une ligne d'en-tête.
+- `Address\Client_Address` et `Address\Address_Source` : l'adresse retenue
+  porte sa provenance — connexion, en-tête et rang, ou indéterminée — et la
+  raison de son indétermination, que l'écran de diagnostic de FNC-29 affichera.
+  Les deux accesseurs sont non nullables : une adresse indéterminable est une
+  valeur, pas une absence.
+- `Http\Server_Environment` : le seul fichier du plugin qui lise `$_SERVER`. La
+  liste des en-têtes lisibles est fermée à quatre noms (§7.1) ; `Client-Ip`,
+  celui auquel la dépendance fait confiance en premier, n'y est pas et n'est pas
+  atteignable même écrit dans le réglage.
+- `Support\Redactor` : expurgation avant toute écriture (SEC-06). Le dernier
+  octet d'une adresse IPv4 et les 64 bits bas d'une adresse IPv6 sont masqués,
+  le réseau est conservé — c'est lui qui sert au diagnostic, l'hôte est ce qui
+  désigne une personne. Un test de propriété vérifie qu'aucune forme expurgée
+  ne contient l'adresse complète.
+- Vingt-sept tests de plus dans la suite `matching` (120 au total) et cinq dans
+  la suite `unit` (51) : les six scénarios du §11.3 qui portent sur la
+  résolution, la reconnaissance des proxys déclarés par toutes les formes de la
+  grammaire, les chaînes à double pile, et les formes d'adresse-avec-port.
+- Trois précisions apportées par l'écriture du résolveur, toutes énoncées au
+  §4.7 : derrière un proxy déclaré, un en-tête absent rend l'adresse
+  indéterminable et non l'adresse de connexion — s'y replier reviendrait à
+  évaluer les règles contre l'adresse du CDN ; la lecture s'arrête au premier
+  élément qui n'est pas un proxy déclaré, parce que ce qui est à sa gauche est
+  du texte que le client contrôle et qu'un en-tête absurde ne doit pas pouvoir
+  neutraliser la liste ; et l'adresse accompagnée de son port est lue, sous les
+  deux seules formes sans équivoque.
+- `.coverage-baseline` passe de 98,31 % à 98,55 %.
+
+### Levé
+
+- Point ouvert V-10 : la suite `contract` a été exécutée contre Restrict
+  Content Pro en intégration continue — `OK (36 tests, 77 assertions)`. Le
+  mécanisme de bascule de branche est bien absent de la variante commerciale,
+  et son option de branche n'apparaît pas du fait de la dépendance. L'écart
+  d'assertions avec la variante gratuite — 77 contre 79 — est la signature du
+  dispositif du lot 1 : ce sont les tests conscients de la variante qui prennent
+  l'autre branche, celle qui affirme l'absence. Les tests restent et changent de
+  nature : ils ne comblent plus une inconnue, ils surveillent une propriété
+  établie.
+
+### Corrigé
+
+- Le contrôle de branches lisait la mesure fusionnée de php-code-coverage. Dès
+  qu'un fichier est exercé par deux suites, la fusion en porte deux modèles de
+  branches différents, aux identifiants et aux lignes décalés, et la moitié
+  était rapportée non prise alors qu'elle est exercée. La mesure est désormais
+  relue d'une seule suite, celle qui exerce les répertoires purs — ce qui
+  resserre le contrôle au lieu de le relâcher (JE-021).
+
+### Documentation
+
+- JE-021 : les données de branches ne se fusionnent pas d'un processus à l'autre.
+  Un outil de mesure a des défauts comme un autre, et celui-ci se signalait par
+  un échec — le même défaut dans une mesure de lignes aurait annoncé une
+  couverture plus haute qu'elle n'est, sans que personne le voie.
+- Le README dit quelle adresse est évaluée, et ce qu'il faut déclarer pour qu'un
+  site derrière un CDN fonctionne. C'est la question que posera tout
+  administrateur dont les règles « ne marchent pas ».
+
+---
+
 Lot 2 : moteur de correspondance. Aucune fonctionnalité de restriction n'est
 encore livrée — le moteur sait dire si une adresse correspond à une liste, et
 personne ne l'interroge encore.

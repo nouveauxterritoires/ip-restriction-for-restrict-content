@@ -1,8 +1,9 @@
 # Architecture
 
 Ce document décrit la forme prévue du code. Au moment où il est écrit, les
-lots 0 à 2 sont livrés : l'amorçage conditionnel, la sonde de capacités,
-l'écran d'état, et le moteur de correspondance. Tout le reste est une cible, pas un état. Les cases non livrées
+lots 0 à 3 sont livrés : l'amorçage conditionnel, la sonde de capacités,
+l'écran d'état, le moteur de correspondance et la résolution de l'adresse du
+visiteur. Tout le reste est une cible, pas un état. Les cases non livrées
 sont signalées comme telles dans l'arborescence du §3.
 
 Référence : cahier des charges §4 (règles de décision), §5 (intégration),
@@ -90,11 +91,11 @@ src/
 │   ├── Capability_Catalogue.php        livré — les capacités attendues, en donnée
 │   └── Capability_Report.php           livré — présente | absente | non observable
 │
-├── Address/                            décision pure — adresse du visiteur
+├── Address/                            décision pure — adresse du visiteur, livré
 │   ├── Ip_Number.php                   livré — entier de longueur fixe, arithmétique d'adresse
-│   ├── Client_Address.php              objet de valeur : adresse + provenance
-│   ├── Address_Source.php              énumération : connexion | en-tête
-│   └── Client_Address_Resolver.php     R-01 à R-07, lecture de droite à gauche
+│   ├── Client_Address.php              livré — adresse + provenance + raison de l'indétermination
+│   ├── Address_Source.php              livré — énumération : connexion | en-tête | indéterminée
+│   └── Client_Address_Resolver.php     livré — R-01 à R-07, lecture de droite à gauche
 │
 ├── Rule/                               décision pure — le moteur, livré
 │   ├── Rule.php                        livré — intervalle + famille + texte d'origine
@@ -119,7 +120,7 @@ src/
 │   └── Settings_Validator.php          validation à l'écriture, A-02
 │
 ├── Http/                               transport — environnement de la requête
-│   └── Server_Environment.php          seul point du plugin qui lise $_SERVER
+│   └── Server_Environment.php          livré — seul point du plugin qui lise $_SERVER
 │
 ├── Integration/                        application — branchements sur la dépendance
 │   ├── Capability_Probe.php            livré — sonde du §5.2, jamais mémorisée (P-01…P-04)
@@ -139,7 +140,7 @@ src/
 │   └── Rejection_Notice.php            FNC-22, A-03
 │
 └── Support/
-    ├── Redactor.php                    SEC-06, expurgation avant journalisation
+    ├── Redactor.php                    livré — SEC-06, expurgation avant journalisation
     └── Extension_Points.php            noms des hooks du §8, en un seul endroit
 ```
 
@@ -171,7 +172,7 @@ vérifie explicitement.
 
 | Objet | Porte | Fabriques |
 |---|---|---|
-| `Client_Address` | L'adresse retenue, sa famille, sa provenance | `from_connection()`, `from_header()`, `unknown()` |
+| `Client_Address` | L'adresse retenue, sa provenance, et la raison de son indétermination | `from_connection()`, `from_header()`, `undetermined()` |
 | `Ip_Number` | Un entier de longueur fixe et sa famille | `from_address()`, `from_ipv4_bytes()`, `min_of()`, `max_of()` |
 | `Rule` | Un intervalle borné, la famille, le texte d'origine | `literal()`, `wildcard()`, `cidr()`, `range()` |
 | `Rule_Rejection` | Le texte refusé, son numéro de ligne, le motif | `because()` |
@@ -183,13 +184,18 @@ vérifie explicitement.
 
 Deux choix de nommage valent une justification.
 
-**`Client_Address::unknown()`.** Une adresse indéterminable est une valeur, pas
-une absence. La représenter par `null` obligerait chaque appelant à se souvenir
+**`Client_Address::undetermined()`.** Une adresse indéterminable est une valeur,
+pas une absence. La représenter par `null` obligerait chaque appelant à se souvenir
 de tester, et le premier oubli deviendrait une erreur fatale sur un chemin rare
 — exactement le chemin d'un visiteur derrière un proxy mal configuré. Un objet
 `unknown()` ne correspond à aucune règle, ce qui est la fermeture exigée par
 SEC-10, et il porte la raison pour laquelle l'adresse est inconnue, ce que
-FNC-29 affiche.
+FNC-29 affiche. Le même raisonnement vaut pour sa **provenance** : `source()`
+n'est pas nullable, et l'énumération porte un troisième cas, « indéterminée ».
+Rendre l'accesseur nullable aurait obligé chaque appelant à se souvenir de
+tester, et le premier oubli serait une erreur fatale sur le chemin d'un
+visiteur derrière un proxy mal configuré — c'est-à-dire le chemin rare, celui
+qu'on ne voit qu'en production.
 
 **`Access_Decision::not_handled()`.** Le plugin ne décide jamais de **refuser**
 un accès : il accorde, ou il ne se prononce pas et laisse la dépendance décider

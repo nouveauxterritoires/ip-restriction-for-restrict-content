@@ -498,6 +498,30 @@ comportement de la dépendance par un filtre global changerait le comportement
 d'autres extensions sans qu'elles le sachent. Le plugin résout l'adresse pour
 lui-même.
 
+**Trois précisions apportées par l'écriture du résolveur au lot 3.**
+
+*Derrière un proxy déclaré, l'absence de valeur d'en-tête rend l'adresse
+indéterminable* — et non l'adresse de connexion. Retenir celle-ci reviendrait à
+évaluer les règles contre l'adresse du proxy, c'est-à-dire du CDN : c'est
+exactement le piège que l'option B d'ADR-0006 décrit, et une règle posée sur
+cette adresse ouvrirait le site à tout l'internet. Le cas couvre aussi
+l'administrateur qui déclare des proxys sans déclarer d'en-tête à lire.
+
+*La lecture s'arrête au premier élément qui n'est pas un proxy déclaré, en
+remontant depuis la droite.* Ce qui se trouve à gauche de cet élément est du
+texte que le client a pu écrire lui-même, et qu'aucun proxy de confiance n'a
+cautionné : fermer la résolution parce qu'il est illisible donnerait à n'importe
+quel visiteur le moyen de neutraliser la liste d'autorisation en envoyant un
+en-tête absurde. Un élément illisible **à droite** de l'adresse retenue ferme en
+revanche la résolution : c'est celui que notre propre proxy a ajouté, et son
+illisibilité met en cause la configuration du proxy (R-05).
+
+*L'adresse accompagnée de son port est lue* : `198.51.100.9:52000` en IPv4 et
+`[2001:db8::1]:443` en IPv6, parce que les proxys réels en émettent (§11.4).
+Toute autre forme est refusée. Accepter ces deux-là n'ajoute aucune ambiguïté,
+puisque la séparation y est sans équivoque ; deviner où s'arrête une adresse
+dans `[2001:db8::1` en ajouterait une.
+
 ---
 
 ## §5 Intégration à la dépendance
@@ -1081,10 +1105,14 @@ l'avoir, et c'est aussi le seul qui soit entièrement pur, donc le seul où 100 
 soit atteignable sans contorsion.
 
 **Comment les branches sont mesurées.** Le rapport Clover n'en transporte pas
-l'information : `bin/lib/check-branches.php` relit la mesure sérialisée
-fusionnée de php-code-coverage. La couverture de chemins d'Xdebug demande en
-outre de restreindre l'instrumentation à `src/`, faute de quoi le processus est
-tué par le système sur une suite qui charge WordPress (JE-018).
+l'information : `bin/lib/check-branches.php` relit la mesure sérialisée de
+php-code-coverage — celle d'**une seule suite**, celle qui exerce les
+répertoires purs, parce que les données de branches ne se fusionnent pas de
+façon fiable d'un processus à l'autre (JE-021). Le contrôle en est resserré :
+une branche qui ne serait prise que par une autre suite est rapportée non
+prise. La couverture de chemins d'Xdebug demande en outre de restreindre
+l'instrumentation à `src/`, faute de quoi le processus est tué par le système
+sur une suite qui charge WordPress (JE-018).
 
 Ce plancher a produit un effet qu'on n'attendait pas : sa première mesure a
 débusqué seize branches qu'**aucun test ne pouvait prendre**, toutes du code
@@ -1166,9 +1194,9 @@ si son attestation a tourné.
 | Lot | Contenu | Atteste |
 |---|---|---|
 | **0 — livré** | Outillage reproductible, amorçage conditionnel, contrôle des prérequis, avis d'administration, cinq suites déclarées, scanners, intégration continue | `make test-unit` et `make test-integration` verts ; `bin/scan-secrets.sh` et `bin/scan-placeholders.sh` verts ; `make lint` et `make stan` verts |
-| **1 — livré contre la variante gratuite** | Suite `contract` peuplée : contrôle de la branche chargée (§1.1), puis une accroche du §5.1 par test, contre les deux variantes. Sonde de capacités étendue et non mémorisée (§5.2.1), avec le libellé d'avis de E-05. Écran d'état des capacités | 36 tests `contract` passent contre Restrict Content 4.0.5 ; P-01 à P-04 sont établis dans la suite `integration` autant qu'un processus unique le permet (§11.2) ; les jobs `contract-free` et `contract-pro` sont déclarés. **Reste** : exécuter la suite contre la variante commerciale, ce qui lèvera V-10 ; V-11 demande un site 2.x provisionné ; V-13 est surveillé par un test |
+| **1 — livré** | Suite `contract` peuplée : contrôle de la branche chargée (§1.1), puis une accroche du §5.1 par test, contre les deux variantes. Sonde de capacités étendue et non mémorisée (§5.2.1), avec le libellé d'avis de E-05. Écran d'état des capacités | 36 tests `contract` passent contre Restrict Content 4.0.5 ; P-01 à P-04 sont établis dans la suite `integration` autant qu'un processus unique le permet (§11.2) ; les jobs `contract-free` et `contract-pro` sont déclarés. La suite est exécutée contre les deux variantes en intégration continue depuis le 15 octobre 2026, ce qui a levé V-10. **Reste** : V-11 demande un site 2.x provisionné ; V-13 est surveillé par un test |
 | **2 — livré** | Grammaire, analyseur, normalisation des quatre formes, IPv4 et IPv6, décision sur un ensemble. Aucun branchement WordPress | Suite `matching` : 93 tests ; chaque format de FNC-13 à FNC-18 et chaque contrainte de G-01 à G-07 ont le leur, avec le motif de refus attendu. 100 % des lignes **et des branches** sur `src/Address/` et `src/Rule/`, mesuré par `bin/lib/check-branches.php`. Un test de la suite `unit` échoue si un appel à WordPress apparaît dans ces répertoires. **Reste** : la résolution de l'adresse du visiteur, qui est le lot 3 |
-| **3 — résolution de l'adresse** | `Client_Address_Resolver`, proxys de confiance, lecture de droite à gauche, source de l'adresse | Suite `matching` : les onze scénarios du §11.3 passent. SEC-07 à SEC-10 et SEC-12 couvertes |
+| **3 — livré** | `Client_Address_Resolver`, proxys de confiance, lecture de droite à gauche, source de l'adresse | Suite `matching` : 120 tests, dont les six scénarios du §11.3 qui portent sur la résolution — les deux suivants ont été établis au lot 2, les trois derniers portent sur le comportement observable et attendent le lot 5. SEC-06 à SEC-10 couvertes, SEC-12 couverte à la lecture. `Support\Redactor` expurge avant toute écriture, et un seul fichier du plugin lit `$_SERVER` |
 | **4 — réglages globaux** | Écran de réglages, les deux listes, message d'erreur, proxys, validation à l'écriture, signalement des entrées rejetées, écran de diagnostic FNC-29 | Suites `integration` et `access` : aller-retour d'enregistrement, nonce et capacité exigés, entrée rejetée signalée. SEC-01, SEC-03, SEC-11 couvertes |
 | **5 — autorisation globale** | Branchement sur `rcp_member_can_access`, chemins connecté et déconnecté, contenus | Suite `access` : FNC-01, FNC-05, FNC-06, FNC-30, FNC-31. SEC-13, SEC-14 couvertes |
 | **6 — blocage d'inscription** | Branchement sur `rcp_form_errors`, message personnalisé, échappement | Suite `access` : FNC-07 à FNC-12, A-01 à A-03. SEC-17 couverte |
@@ -1265,7 +1293,7 @@ section est ce qui empêche de présenter une hypothèse comme un acquis.
 | **V-07** | ~~Le filtre `rcp_member_can_access` est-il appliqué à l'identique dans la variante **gratuite** ?~~ | **Levé le 22 septembre 2026.** La source de la variante gratuite (RC 4.0.4) est lisible en local : le commentaire est à `core/includes/member-functions.php:100` et le `apply_filters` à la ligne 101, aux mêmes positions que dans la variante commerciale. Les cinq applications du chemin connecté et les trois du chemin historique sont également aux mêmes lignes (§5.1) | Le test de contrat reste, mais il n'établit plus une inconnue : il **surveille** une propriété établie. La lecture prouve que le code est là ; seule l'exécution prouve qu'il est atteint sur le chemin qui nous intéresse |
 | **V-08** | Interaction avec les caches de pages et les CDN | Rien dans la documentation amont | Au lot 5 : servir un contenu restreint à une adresse autorisée derrière un cache de pages, puis le redemander depuis une adresse non autorisée. SEC-14 pose l'attendu ; la recette établit que le marquage de non-cachabilité est bien honoré par les caches courants |
 | **V-09** | Absence de chevauchement avec les redirections personnalisées | La recherche conclut que l'add-on de redirection ne traite que la redirection après connexion et après inscription, par niveau d'adhésion | Sans objet pour ce plugin : les deux périmètres sont disjoints, et §0.2 le pose en hors-périmètre |
-| **V-10** | Quelle valeur prend `restrict_content_chosen_version` lorsque **Restrict Content Pro** est installé à la place de la variante gratuite ? Le mécanisme de routage est-il seulement atteint ? | **Instrumenté au lot 1, pas encore relevé.** `RC_Requirements_Check` et `rc_process_legacy_switch()` sont dans `restrictcontent.php`, fichier principal de la variante **gratuite**. Le checkout commercial v3.5.51 n'a ni ce fichier ni ce mécanisme, ce qui suggère qu'il ne s'applique pas — mais l'absence d'un fichier dans un checkout n'établit pas l'absence du comportement | `tests/contract/BranchSwitchContractTest.php` affirme, pour chaque variante, ce qui doit être vrai : contre la gratuite, que le mécanisme existe et retourne l'option dans les deux sens ; contre la commerciale, qu'il est absent et que l'option de branche n'apparaît pas du fait de la dépendance. Les deux affirmations sont écrites et la première est vérifiée ; la seconde attend une exécution de `make test-contract-pro`, donc l'archive commerciale. Aucun test n'est ignoré : c'est la même suite qui conclut, selon la variante qu'elle constate |
+| **V-10** | Quelle valeur prend `restrict_content_chosen_version` lorsque **Restrict Content Pro** est installé à la place de la variante gratuite ? Le mécanisme de routage est-il seulement atteint ? | **Levé le 15 octobre 2026.** La suite `contract` a été exécutée contre Restrict Content Pro en intégration continue : `OK (36 tests, 77 assertions)`. Le mécanisme de bascule de branche est **absent** de la variante commerciale, et son option de branche n'apparaît pas du fait de la dépendance — ce que les tests affirmaient pour cette variante est constaté | Les tests restent, et changent de nature : ils ne comblent plus une inconnue, ils **surveillent** une propriété établie. L'écart d'assertions avec la variante gratuite — 77 contre 79 — est la signature du dispositif : ce sont les tests conscients de la variante qui prennent l'autre branche, celle qui affirme l'absence du mécanisme |
 | **V-11** | Lors d'une mise à jour depuis une version 2.x historique, l'option est-elle écrite rétroactivement, et le site peut-il en sortir ? | **Partiellement levé, et inchangé au lot 1.** Le code établit que la valeur enregistrée prime à chaque amorçage (`restrictcontent.php:189-199`), et le lot 1 établit **par exécution** que la sortie est possible dans les deux sens, sous capacité et sous nonce (`BranchSwitchContractTest`) — le site n'y reste donc pas « indéfiniment ». Reste inconnu : le comportement de la **première** mise à jour depuis une 2.x, et sur quelle valeur l'option est alors écrite | Provisionner un site portant `rc_settings` et une méta `rcp_user_level`, mettre à jour, relever la valeur retenue. Rien dans le code de ce plugin n'en dépend : il ne lit pas cette option (B-02, et un test d'intégration l'établit) |
 | **V-12** | ~~Existe-t-il un chemin d'interface permettant de basculer d'une branche à l'autre ?~~ | **Levé le 22 septembre 2026, et la réponse va plus loin que la question.** Oui : `rc_process_legacy_switch()` (`restrictcontent.php:676`), gestionnaire AJAX enregistré sur `wp_ajax_rc_process_legacy_switch` (ligne 731), protégé par `manage_options` (ligne 680) et le nonce `rc_process_legacy_nonce` (ligne 681), bascule l'option **dans les deux sens** (lignes 695 et 706). Le choix de branche est donc réversible à tout moment, et non figé à la première activation | Conséquences portées en exigences : B-04 (§1.1), P-01 à P-04 (§5.2.1), E-05 (§5.3), et le scénario de bascule du §11.7 |
 | **V-13** | Le défaut SQL de `restrict_content_check_posts_for_shortcode()` a-t-il été signalé ou corrigé après la 4.0.4 ? | **Toujours ouvert, et désormais surveillé.** Le défaut est vérifié dans la source gratuite elle-même — déclaration à `restrictcontent.php:243`, `CONTAINS` fautifs aux lignes suivantes (JE-003) — et il est **toujours présent en 4.0.5** : l'erreur SQL s'affiche à chaque amorçage de la suite. Ce qu'on ignore est ce qu'en feront les versions ultérieures | `BranchSwitchContractTest::test_the_upstream_routing_defect_is_still_present()` échouera le jour où le défaut sera corrigé, et le déclencheur quotidien de la suite `contract` s'exécute contre la dernière version publiée. Aucun code de ce plugin n'en dépend (B-03) |

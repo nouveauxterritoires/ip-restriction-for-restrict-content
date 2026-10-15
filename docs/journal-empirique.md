@@ -767,3 +767,36 @@ motif qui lui est propre — `ambiguous_octet` —, et non le motif générique 
 faute de forme. Le contrôle s'applique aussi à la partie IPv4 d'une forme mixte
 (`::ffff:010.0.0.1`). Ce n'est pas une règle nouvelle : c'est FNC-20 appliqué à
 un cas que la grammaire ne nommait pas.
+
+---
+
+## JE-021 — Les données de branches ne se fusionnent pas d'un processus à l'autre
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 3, après l'ajout de
+`Support\Redactor`, qui fait exercer `Rule\Rule_Family` par la suite `unit`
+autant que par la suite `matching`.
+
+Le contrôle de branches lisait la mesure **fusionnée** de php-code-coverage.
+Tant qu'un fichier n'était exercé que par une seule suite, cela marchait. Dès
+qu'il l'a été par deux, le contrôle a rapporté une douzaine de branches non
+prises sur une méthode d'une ligne — un simple ternaire.
+
+La mesure fusionnée portait, pour cette méthode, **deux modèles de branches
+différents** : dix-huit branches dont la moitié à `hit=0` avec des lignes
+décalées d'une unité, et quatre branches toutes prises. Les identifiants ne
+coïncident pas, les lignes non plus, et la fusion les additionne au lieu de les
+réconcilier. Le constat vaut aussi pour une union écrite à la main, qui avait
+produit le même symptôme au lot 2 par l'autre bout.
+
+**Conséquence** : la couverture de branches est relue de la mesure d'**une
+seule suite**, celle qui exerce les répertoires purs. Ce n'est pas un
+assouplissement mais un resserrement : une branche qui ne serait prise que par
+une autre suite est désormais rapportée non prise. Et c'est cohérent avec ce que
+le plancher veut dire — les répertoires purs doivent être exhaustivement
+exercés par la suite qui leur est dédiée, pas par la somme des passages
+accidentels des autres.
+
+La morale est désagréable et utile : **un outil de mesure est un outil comme un
+autre, et il a des défauts**. Celui-ci se signale par un échec, donc on le
+corrige ; le même défaut dans une mesure de lignes aurait annoncé une
+couverture plus haute qu'elle n'est, et personne ne l'aurait vu.

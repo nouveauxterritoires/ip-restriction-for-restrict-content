@@ -9,9 +9,10 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Le plugin ne restreint rien pour le moment.** Les lots 0, 1 et 2 sont livrés :
-le moteur de correspondance d'adresses existe et est exhaustivement testé, mais
-rien ne le branche encore sur la dépendance. Ce qui est livré et vérifié :
+**Le plugin ne restreint rien pour le moment.** Les lots 0 à 3 sont livrés : le
+moteur de correspondance et la résolution de l'adresse du visiteur existent et
+sont exhaustivement testés, mais rien ne les branche encore sur la dépendance.
+Ce qui est livré et vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -26,18 +27,21 @@ rien ne le branche encore sur la dépendance. Ce qui est livré et vérifié :
 | Moteur de correspondance : grammaire close, quatre formes normalisées en intervalles, IPv4 et IPv6, décision sur un ensemble | `src/Rule/`, `src/Address/Ip_Number.php`, 93 tests de la suite `matching` |
 | Couverture de 100 % des lignes **et des branches** sur le moteur | `bin/check-coverage.sh`, `bin/lib/check-branches.php` |
 | Aucun appel à WordPress dans la couche de décision, vérifié mécaniquement | `tests/unit/Tooling/PurityTest.php` |
-| Cinq suites de tests déclarées, dont quatre peuplées — 197 tests | `phpunit.xml.dist`, `tests/` |
+| Résolution de l'adresse du visiteur : `REMOTE_ADDR` par défaut, en-tête lu seulement derrière un proxy déclaré, chaîne remontée de droite à gauche | `src/Address/Client_Address_Resolver.php`, `src/Http/Server_Environment.php` |
+| Expurgation avant toute écriture : jamais d'adresse complète dans un message du plugin | `src/Support/Redactor.php` |
+| Cinq suites de tests déclarées, dont quatre peuplées — 229 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
 **Rien d'autre.** Ni liste d'autorisation, ni liste de blocage, ni écran de
-réglages, ni résolution de l'adresse du visiteur. Le moteur sait dire si une
-adresse correspond à une liste ; personne ne l'interroge encore. Ce que le plugin
+réglages. Le plugin sait quelle adresse évaluer et si elle correspond à une
+liste ; personne ne l'interroge encore. Ce que le plugin
 fera est spécifié dans le cahier des charges ; le découpage en lots est au §13.
 
-**Ce qui reste en suspens** : exécuter la suite `contract` contre Restrict
-Content Pro, ce qui demande son archive (`make test-contract-pro`) et lèvera le
-point ouvert V-10.
+La suite `contract` est exécutée contre les **deux** variantes en intégration
+continue, Restrict Content Pro compris : `OK (36 tests, 77 assertions)`. En
+local, la variante commerciale demande son archive, qui n'est jamais versionnée
+(`make test-contract-pro`, voir les prérequis ci-dessous).
 
 ### Formats acceptés par le moteur
 
@@ -48,6 +52,24 @@ point ouvert V-10.
 | Plage, bornes incluses | `159.7.89.231-159.7.89.240` | oui | oui |
 | CIDR | `10.0.0.0/24`, `2001:db8::/32` | oui | oui |
 | Plage à bornes jokers | `149.58.*-149.60.*` | oui | **non** |
+
+### Quelle adresse est évaluée
+
+Par défaut, **l'adresse de la connexion TCP** (`REMOTE_ADDR`), et rien d'autre :
+aucun en-tête HTTP n'est lu, parce que tout en-tête est écrit par le client. Un
+visiteur qui envoie `X-Forwarded-For: <adresse autorisée>` n'obtient rien.
+
+Derrière un proxy ou un CDN, il faut déclarer deux choses : la liste des
+**proxys de confiance** (même grammaire que les listes d'adresses) et le nom de
+l'en-tête à lire, parmi `X-Forwarded-For`, `CF-Connecting-IP`, `True-Client-IP`
+et `X-Real-IP`. L'en-tête n'est alors lu que si la connexion vient d'un proxy
+déclaré, et la chaîne est remontée **de droite à gauche** en sautant les proxys
+connus : la valeur qu'un client aurait préfixée n'est jamais retenue.
+
+Si l'adresse ne peut pas être déterminée — en-tête absent ou illisible, chaîne
+entièrement composée de proxys —, elle est **indéterminable** : aucune règle ne
+correspond, et aucun accès n'est accordé. Le plugin ne se replie jamais sur
+l'adresse du proxy, qui est celle du CDN.
 
 Une entrée par ligne ; les lignes vides, les espaces de bordure et les
 commentaires introduits par `#` sont ignorés. Une entrée que l'analyseur ne

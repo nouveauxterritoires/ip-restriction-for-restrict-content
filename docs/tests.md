@@ -3,13 +3,13 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 2** : les suites `unit` (46 tests), `integration` (22 tests),
-`contract` (36 tests) et `matching` (93 tests) sont peuplées ; la suite `access`
+**État au lot 3** : les suites `unit` (51 tests), `integration` (22 tests),
+`contract` (36 tests) et `matching` (120 tests) sont peuplées ; la suite `access`
 est déclarée et vide. Une suite vide sort en succès (JE-001) : celle-là n'est
 donc pas encore déclarée comme job d'intégration continue, et son verdict actuel
 ne vaut rien. La suite `contract` est exécutée par les jobs `contract-free` et
-`contract-pro` depuis le lot 1 ; seul le premier a tourné, le second attendant
-l'archive commerciale (V-10).
+`contract-pro` : **les deux ont tourné et sont verts** depuis le 15 octobre 2026,
+ce qui a levé le point ouvert V-10.
 
 ---
 
@@ -202,13 +202,18 @@ des charges §11.3. Chacun est un test nommé d'après son scénario. Ce n'est p
 une liste indicative : c'est la traduction de SEC-07 à SEC-09, et l'absence
 d'un seul de ces tests laisse une voie de contournement non couverte.
 
-**Peuplée au lot 2** : `IpNumberTest`, `RuleTest`, `RuleParserTest` et
-`MatcherTest` — 93 tests. Les formats de FNC-13 à FNC-18 passent par un
+**Peuplée aux lots 2 et 3** : `IpNumberTest`, `RuleTest`, `RuleParserTest`,
+`MatcherTest`, `ClientAddressResolverTest` et `ServerEnvironmentTest` —
+120 tests. Les formats de FNC-13 à FNC-18 passent par un
 fournisseur de données qui énonce les bornes attendues, et les contraintes
 G-01 à G-07 par un second qui énonce le **motif de refus** attendu : un
 analyseur qui rejetterait tout avec le même motif satisferait FNC-20 et rendrait
-FNC-22 inutilisable. Les onze scénarios de résolution d'adresse viendront au
-lot 3, avec le résolveur qu'ils éprouvent.
+FNC-22 inutilisable. Les scénarios de résolution d'adresse sont écrits au lot 3 : les six qui
+portent sur la résolution sont dans `ClientAddressResolverTest`, nommés d'après
+leur scénario ; les deux suivants — règle universelle et famille discordante —
+ont été établis au lot 2 ; les trois derniers portent sur le comportement
+observable et relèvent de la suite `access`, au lot 5. Les écrire ailleurs
+qu'ici serait mentir sur ce qu'ils établissent.
 
 ### 2.5 `access` — le comportement observable
 
@@ -295,11 +300,13 @@ taux partiel trompeur. `phpunit.xml.dist` ne demande donc aucun rapport par
 défaut ; `make coverage` mesure chaque suite et fusionne.
 
 **Les branches ne sont pas dans le rapport Clover.** Elles sont relues depuis la
-mesure sérialisée **fusionnée** — fusionnée et non suite par suite, parce que
-les identifiants de branche d'un fichier chargé mais non exécuté ne coïncident
-pas avec ceux du même fichier exécuté. La couverture de chemins exige en outre
-de restreindre l'instrumentation d'Xdebug à `src/`, sans quoi le processus est
-tué par le système (JE-018).
+mesure sérialisée d'**une seule suite** — celle qui exerce les répertoires purs,
+parce que les données de branches ne se fusionnent pas de façon fiable d'un
+processus à l'autre : une même méthode s'y retrouve décrite par deux modèles
+dont les identifiants et les lignes ne coïncident pas (JE-021). Le contrôle en
+est resserré, non relâché. La couverture de chemins exige en outre de
+restreindre l'instrumentation d'Xdebug à `src/`, sans quoi le processus est tué
+par le système (JE-018).
 
 ---
 
