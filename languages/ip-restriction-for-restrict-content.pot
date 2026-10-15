@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-22T10:12:52+00:00\n"
+"POT-Creation-Date: 2026-10-15T10:59:21+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ip-restriction-for-restrict-content\n"
@@ -34,22 +34,138 @@ msgstr ""
 msgid "Nouveaux Territoires"
 msgstr ""
 
-#: src/Admin/Requirements_Notice.php:87
+#: src/Admin/Capability_Labels.php:37
+msgid "Amorçage du plugin"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:39
+msgid "Contournement des restrictions de contenu"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:41
+msgid "Couverture des restrictions de taxonomie"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:43
+msgid "Blocage d'inscription"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:45
+msgid "Portée par niveau d'adhésion"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:47
+msgid "Portée par contenu"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:49
+msgid "Écran de réglages"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:64
+msgid "présente"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:66
+msgid "absente"
+msgstr ""
+
+#: src/Admin/Capability_Labels.php:68
+msgid "non observable sur cette requête"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:96
+#: src/Admin/Capability_Status_Page.php:115
+msgid "Restriction par adresse IP — état des capacités"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:97
+msgid "Restriction par adresse IP"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:116
+msgid "Ce qui suit est constaté sur la requête en cours. Rien n'est mémorisé : la base de code chargée par la dépendance peut changer entre deux requêtes."
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:132
+msgid "Dépendance"
+msgstr ""
+
+#. translators: 1: nom de l'option amont, 2: valeur de l'option.
+#: src/Admin/Capability_Status_Page.php:145
+#, php-format
+msgid "Indication, non utilisée pour décider : l'option amont « %1$s » vaut « %2$s »."
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:159
+msgid "Fonctionnalités"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:161
+msgid "Fonctionnalité"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:162
+#: src/Admin/Capability_Status_Page.php:190
+msgid "État"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:171
+msgid "disponible"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:172
+msgid "indisponible — capacité amont absente"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:186
+msgid "Capacités constatées"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:188
+msgid "Symbole"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:189
+msgid "Accroche fournie"
+msgstr ""
+
+#: src/Admin/Capability_Status_Page.php:191
+msgid "Preuve amont"
+msgstr ""
+
+#: src/Admin/Dependency_Labels.php:40
+msgid "Restrict Content est actif, mais charge sa base de code historique, qui n'expose pas l'interface de programmation nécessaire."
+msgstr ""
+
+#: src/Admin/Dependency_Labels.php:46
+msgid "Restrict Content ou Restrict Content Pro, actif"
+msgstr ""
+
+#: src/Admin/Dependency_Labels.php:57
+msgid "Active, et l'interface de programmation attendue est en mémoire."
+msgstr ""
+
+#: src/Admin/Dependency_Labels.php:64
+msgid "Aucune des deux variantes n'est en mémoire sur cette requête."
+msgstr ""
+
+#: src/Admin/Dependency_Labels.php:73
+msgid "Pour y remédier : dans l'administration de Restrict Content, repassez sur sa base de code moderne. Ce plugin repart dès la requête suivante, sans réactivation ni réenregistrement."
+msgstr ""
+
+#: src/Admin/Requirements_Notice.php:108
 msgid "IP Restriction for Restrict Content ne peut pas démarrer : prérequis absents."
 msgstr ""
 
 #. translators: 1: version de PHP requise, 2: version installée.
-#: src/Plugin.php:64
+#: src/Plugin.php:81
 #, php-format
 msgid "PHP %1$s ou plus récent (version installée : %2$s)"
 msgstr ""
 
 #. translators: 1: version de WordPress requise, 2: version installée.
-#: src/Plugin.php:70
+#: src/Plugin.php:87
 #, php-format
 msgid "WordPress %1$s ou plus récent (version installée : %2$s)"
-msgstr ""
-
-#: src/Plugin.php:74
-msgid "Restrict Content ou Restrict Content Pro, actif"
 msgstr ""

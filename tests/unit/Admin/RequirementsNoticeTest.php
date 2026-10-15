@@ -33,9 +33,10 @@ final class RequirementsNoticeTest extends UnitTestCase {
 	 *
 	 * @param string[] $missing      Prérequis absents.
 	 * @param bool     $can_activate Droit `activate_plugins` de l'utilisateur courant.
+	 * @param string[] $hints        Indications d'action.
 	 * @return string Balisage capturé, chaîne vide si l'avis ne s'affiche pas.
 	 */
-	private function render( array $missing, bool $can_activate = true ): string {
+	private function render( array $missing, bool $can_activate = true, array $hints = array() ): string {
 		$captured = '';
 
 		Functions\when( 'current_user_can' )->justReturn( $can_activate );
@@ -45,7 +46,7 @@ final class RequirementsNoticeTest extends UnitTestCase {
 			}
 		);
 
-		( new Requirements_Notice( $missing ) )->render();
+		( new Requirements_Notice( $missing, $hints ) )->render();
 
 		return $captured;
 	}
@@ -127,5 +128,55 @@ final class RequirementsNoticeTest extends UnitTestCase {
 		$notice->render();
 
 		$this->assertStringNotContainsString( 'Ajouté après coup', $captured );
+	}
+
+	/**
+	 * Une indication d'action est rendue après la liste des prérequis.
+	 *
+	 * E-05 exige que l'avis nomme l'action de retour, et non seulement la
+	 * cause : celui qui lit l'avis est exactement celui qui peut revenir en
+	 * arrière.
+	 *
+	 * @return void
+	 */
+	public function test_a_hint_is_rendered_after_the_requirements(): void {
+		$output = $this->render(
+			array( 'Restrict Content charge sa base de code historique' ),
+			true,
+			array( 'Repassez sur la base de code moderne.' )
+		);
+
+		$this->assertStringContainsString( 'Repassez sur la base de code moderne.', $output );
+		$this->assertLessThan(
+			strpos( $output, 'Repassez sur la base de code moderne.' ),
+			(int) strpos( $output, '</ul>' ),
+			'L\'indication doit suivre la liste des prérequis.'
+		);
+	}
+
+	/**
+	 * Une indication passe elle aussi par l'échappement.
+	 *
+	 * @return void
+	 */
+	public function test_every_hint_goes_through_the_escaping_function(): void {
+		Functions\when( 'esc_html' )->alias(
+			static fn( string $text ): string => '[echappe]' . $text . '[/echappe]'
+		);
+
+		$output = $this->render( array( 'un prérequis' ), true, array( 'Repassez sur la base moderne.' ) );
+
+		$this->assertStringContainsString( '[echappe]Repassez sur la base moderne.[/echappe]', $output );
+	}
+
+	/**
+	 * Sans indication, l'avis ne rend aucun paragraphe supplémentaire.
+	 *
+	 * @return void
+	 */
+	public function test_no_hint_renders_no_extra_paragraph(): void {
+		$output = $this->render( array( 'un prérequis' ) );
+
+		$this->assertStringEndsWith( '</ul>', $output );
 	}
 }

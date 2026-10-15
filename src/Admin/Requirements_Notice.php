@@ -28,12 +28,27 @@ final class Requirements_Notice {
 	private array $missing;
 
 	/**
+	 * Indications d'action, affichées après la liste.
+	 *
+	 * @var list<string>
+	 */
+	private array $hints;
+
+	/**
 	 * Construit l'avis.
 	 *
+	 * Les indications sont séparées des prérequis parce qu'elles ne sont pas de
+	 * même nature : un prérequis dit ce qui manque, une indication dit quoi
+	 * faire. E-05 exige les deux lorsque la cause constatée est une bascule de
+	 * branche de la dépendance, parce que celui qui lit l'avis est exactement
+	 * celui qui peut revenir en arrière.
+	 *
 	 * @param string[] $missing Libellés des prérequis absents.
+	 * @param string[] $hints   Indications d'action, facultatives.
 	 */
-	public function __construct( array $missing ) {
+	public function __construct( array $missing, array $hints = array() ) {
 		$this->missing = array_values( array_map( 'strval', $missing ) );
+		$this->hints   = array_values( array_map( 'strval', $hints ) );
 	}
 
 	/**
@@ -83,8 +98,14 @@ final class Requirements_Notice {
 			$items .= '<li>' . esc_html( $requirement ) . '</li>';
 		}
 
+		$hints = '';
+
+		foreach ( $this->hints as $hint ) {
+			$hints .= '<p>' . esc_html( $hint ) . '</p>';
+		}
+
 		return '<p><strong>'
 			. esc_html__( 'IP Restriction for Restrict Content ne peut pas démarrer : prérequis absents.', 'ip-restriction-for-restrict-content' )
-			. '</strong></p><ul class="ul-disc">' . $items . '</ul>';
+			. '</strong></p><ul class="ul-disc">' . $items . '</ul>' . $hints;
 	}
 }

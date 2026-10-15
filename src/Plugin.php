@@ -16,8 +16,13 @@ namespace Ip_Restriction_For_Restrict_Content;
 
 defined( 'ABSPATH' ) || exit;
 
+use Ip_Restriction_For_Restrict_Content\Admin\Capability_Status_Page;
+use Ip_Restriction_For_Restrict_Content\Admin\Dependency_Labels;
 use Ip_Restriction_For_Restrict_Content\Admin\Requirements_Notice;
+use Ip_Restriction_For_Restrict_Content\Domain\Capability_Report;
+use Ip_Restriction_For_Restrict_Content\Domain\Dependency_Diagnosis;
 use Ip_Restriction_For_Restrict_Content\Domain\Requirements;
+use Ip_Restriction_For_Restrict_Content\Integration\Capability_Probe;
 
 /**
  * Amorçage conditionnel du plugin.
@@ -32,12 +37,21 @@ final class Plugin {
 	private Requirements $requirements;
 
 	/**
-	 * Construit une instance à partir d'un verdict déjà rendu.
+	 * Sonde des capacités, conclue une fois pour la requête.
 	 *
-	 * @param Requirements $requirements Verdict sur les prérequis.
+	 * @var Capability_Probe
 	 */
-	private function __construct( Requirements $requirements ) {
+	private Capability_Probe $probe;
+
+	/**
+	 * Construit une instance à partir d'un constat déjà fait.
+	 *
+	 * @param Requirements     $requirements Verdict sur les prérequis.
+	 * @param Capability_Probe $probe        Sonde conclue sur cette requête.
+	 */
+	private function __construct( Requirements $requirements, Capability_Probe $probe ) {
 		$this->requirements = $requirements;
+		$this->probe        = $probe;
 	}
 
 	/**
@@ -51,11 +65,14 @@ final class Plugin {
 	 * @return self
 	 */
 	public static function from_environment(): self {
+		$probe      = Capability_Probe::observe();
+		$dependency = $probe->dependency();
+
 		return new self(
 			Requirements::evaluate(
 				PHP_VERSION,
 				(string) get_bloginfo( 'version' ),
-				self::membership_dependency_present(),
+				$dependency->is_usable(),
 				RCIPR_MIN_PHP,
 				RCIPR_MIN_WP,
 				array(
@@ -71,23 +88,29 @@ final class Plugin {
 						RCIPR_MIN_WP,
 						(string) get_bloginfo( 'version' )
 					),
-					'dependency' => __( 'Restrict Content ou Restrict Content Pro, actif', 'ip-restriction-for-restrict-content' ),
+					'dependency' => Dependency_Labels::missing_requirement( $dependency ),
 				)
-			)
+			),
+			$probe
 		);
 	}
 
 	/**
-	 * Détecte la dépendance d'adhésions par capacité.
+	 * Rapport sur les capacités constatées sur cette requête.
 	 *
-	 * Ni le nom du plugin ni son numéro de version ne sont interrogés : les deux
-	 * variantes partagent le même code et se renomment au fil des versions. Ce
-	 * qui compte est la présence effective des fonctions que ce plugin appelle.
-	 *
-	 * @return bool
+	 * @return Capability_Report
 	 */
-	private static function membership_dependency_present(): bool {
-		return function_exists( 'rcp_get_membership_levels' );
+	public function capability_report(): Capability_Report {
+		return $this->probe->report();
+	}
+
+	/**
+	 * Diagnostic de la dépendance constaté sur cette requête.
+	 *
+	 * @return Dependency_Diagnosis
+	 */
+	public function dependency_diagnosis(): Dependency_Diagnosis {
+		return $this->probe->dependency();
 	}
 
 	/**
@@ -118,12 +141,33 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register(): void {
+		load_plugin_textdomain( 'ip-restriction-for-restrict-content', false, dirname( plugin_basename( RCIPR_PLUGIN_FILE ) ) . '/languages' );
+
+		/*
+		 * L'écran d'état est enregistré dans tous les cas, y compris quand les
+		 * prérequis manquent : c'est exactement la situation où il sert. Il ne
+		 * dépend d'aucune capacité de la dépendance, et son menu est celui de
+		 * WordPress, qui existe toujours.
+		 */
+		( new Capability_Status_Page( $this->capability_report(), $this->dependency_diagnosis() ) )->register();
+
 		if ( ! $this->is_satisfied() ) {
-			( new Requirements_Notice( $this->missing_requirements() ) )->register();
+			( new Requirements_Notice( $this->missing_requirements(), $this->remediation_hints() ) )->register();
 
 			return;
 		}
+	}
 
-		load_plugin_textdomain( 'ip-restriction-for-restrict-content', false, dirname( plugin_basename( RCIPR_PLUGIN_FILE ) ) . '/languages' );
+	/**
+	 * Indications d'action à joindre à l'avis de prérequis.
+	 *
+	 * @return list<string>
+	 */
+	private function remediation_hints(): array {
+		if ( ! $this->dependency_diagnosis()->is_legacy_branch() ) {
+			return array();
+		}
+
+		return array( Dependency_Labels::remediation() );
 	}
 }
