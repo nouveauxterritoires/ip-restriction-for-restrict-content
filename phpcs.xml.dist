@@ -114,6 +114,16 @@
         <exclude-pattern>tests/*</exclude-pattern>
     </rule>
 
+    <!-- `$this` dans une méthode d'énumération est valide depuis PHP 8.1, et
+         les énumérations sont le plancher de ce plugin (ADR-0002). Le sniff de
+         compatibilité ne connaît pas ce contexte et le signale à tort : son
+         exclusion est donc nommée, fichier par fichier, pour qu'une future
+         énumération doive l'ajouter sciemment plutôt que d'être couverte par
+         une exclusion large. -->
+    <rule ref="PHPCompatibility.Variables.ForbiddenThisUseContexts">
+        <exclude-pattern>src/Rule/Rule_Family.php</exclude-pattern>
+    </rule>
+
     <!-- PSR-4 : les noms de fichiers ne suivent pas la convention WordPress. -->
     <rule ref="WordPress.Files.FileName">
         <exclude-pattern>src/*</exclude-pattern>
