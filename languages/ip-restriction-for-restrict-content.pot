@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-15T16:32:51+00:00\n"
+"POT-Creation-Date: 2026-10-15T18:25:09+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ip-restriction-for-restrict-content\n"
@@ -158,11 +158,22 @@ msgid "Pour y remédier : dans l'administration de Restrict Content, repassez su
 msgstr ""
 
 #: src/Admin/Level_Field.php:144
+#: src/Admin/Post_Metabox.php:109
 msgid "Liste d'autorisation par adresse IP"
 msgstr ""
 
 #: src/Admin/Level_Field.php:149
 msgid "Une entrée par ligne. Ces adresses accèdent aux contenus restreints à ce niveau, et à eux seuls : une autorisation posée ici ne donne aucun accès aux contenus d'un autre niveau."
+msgstr ""
+
+#: src/Admin/Post_Metabox.php:114
+msgid "Une entrée par ligne. Ces adresses accèdent à ce seul contenu, quelles que soient les restrictions ci-dessus."
+msgstr ""
+
+#. translators: 1: numéro de ligne, 2: entrée refusée, 3: motif du refus.
+#: src/Admin/Post_Metabox.php:139
+#, php-format
+msgid "Ligne %1$d — « %2$s » ignorée : %3$s"
 msgstr ""
 
 #: src/Admin/Rejection_Labels.php:35
@@ -331,13 +342,13 @@ msgid "la chaîne de transfert ne contient que des proxys déclarés"
 msgstr ""
 
 #. translators: 1: version de PHP requise, 2: version installée.
-#: src/Plugin.php:88
+#: src/Plugin.php:89
 #, php-format
 msgid "PHP %1$s ou plus récent (version installée : %2$s)"
 msgstr ""
 
 #. translators: 1: version de WordPress requise, 2: version installée.
-#: src/Plugin.php:94
+#: src/Plugin.php:95
 #, php-format
 msgid "WordPress %1$s ou plus récent (version installée : %2$s)"
 msgstr ""

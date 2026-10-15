@@ -12,11 +12,12 @@
  * `update_option()` le sont par construction. C'est la décision O-08, rendue au
  * lot 4 et motivée par ADR-0009.
  *
- * Les listes d'autorisation **par niveau d'adhésion** sont rangées ailleurs : en
- * métadonnée de niveau, par l'interface de la dépendance (§6.3, ADR-0004). La
- * réutiliser fait que la suppression d'un niveau emporte son réglage, sans code
- * de nettoyage — et sans réglage orphelin qui accorderait un accès au niveau
- * suivant à porter le même identifiant.
+ * Les listes d'autorisation **par niveau d'adhésion** sont rangées en
+ * métadonnée de niveau, par l'interface de la dépendance (§6.3, ADR-0004), et
+ * celles **par contenu** en métadonnée de publication (§6.4). Le préfixe de
+ * soulignement de cette dernière la retire de l'interface des champs
+ * personnalisés : un réglage d'accès n'a pas à être modifiable par un champ
+ * libre, où ni nonce ni capacité propre ne le garderaient.
  *
  * Aucune requête SQL directe : tout passe par les API d'options et de
  * métadonnées (SEC-04), et un test de la suite `unit` échoue si `$wpdb`
@@ -86,6 +87,18 @@ final class Settings_Repository {
 	}
 
 	/**
+	 * Clé de la métadonnée de publication qui porte sa liste d'autorisation.
+	 *
+	 * Le préfixe de soulignement la retire de l'interface des champs
+	 * personnalisés (§6.4) : un réglage d'accès n'a pas à être modifiable par
+	 * un champ libre. Elle suit le contenu dans les exports, les révisions et
+	 * la corbeille.
+	 *
+	 * @var string
+	 */
+	public const POST_META_KEY = '_rcipr_ip_allow_list';
+
+	/**
 	 * Lit la liste d'autorisation d'un niveau d'adhésion.
 	 *
 	 * @param int $level_id Identifiant du niveau.
@@ -116,6 +129,38 @@ final class Settings_Repository {
 		}
 
 		rcp_update_membership_level_meta( $level_id, self::LEVEL_META_KEY, $text );
+	}
+
+	/**
+	 * Lit la liste d'autorisation d'un contenu.
+	 *
+	 * @param int $post_id Identifiant du contenu.
+	 * @return string Liste, une entrée par ligne ; chaîne vide s'il n'y en a pas.
+	 */
+	public function load_post_list( int $post_id ): string {
+		$stored = get_post_meta( $post_id, self::POST_META_KEY, true );
+
+		return is_string( $stored ) ? $stored : '';
+	}
+
+	/**
+	 * Écrit la liste d'autorisation d'un contenu.
+	 *
+	 * Une liste vide supprime la métadonnée, pour la même raison qu'au niveau :
+	 * un réglage absent et un réglage vide doivent se lire pareil.
+	 *
+	 * @param int    $post_id Identifiant du contenu.
+	 * @param string $text    Liste, une entrée par ligne.
+	 * @return void
+	 */
+	public function save_post_list( int $post_id, string $text ): void {
+		if ( '' === $text ) {
+			delete_post_meta( $post_id, self::POST_META_KEY );
+
+			return;
+		}
+
+		update_post_meta( $post_id, self::POST_META_KEY, $text );
 	}
 
 	/**

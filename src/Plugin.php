@@ -19,6 +19,7 @@ defined( 'ABSPATH' ) || exit;
 use Ip_Restriction_For_Restrict_Content\Admin\Capability_Status_Page;
 use Ip_Restriction_For_Restrict_Content\Admin\Dependency_Labels;
 use Ip_Restriction_For_Restrict_Content\Admin\Level_Field;
+use Ip_Restriction_For_Restrict_Content\Admin\Post_Metabox;
 use Ip_Restriction_For_Restrict_Content\Admin\Rejection_Notice;
 use Ip_Restriction_For_Restrict_Content\Admin\Requirements_Notice;
 use Ip_Restriction_For_Restrict_Content\Admin\Settings_Page;
@@ -199,6 +200,13 @@ final class Plugin {
 		 * branchement d'un contexte que la sonde ne garantit pas.
 		 */
 		( new Level_Field( $repository ) )->register();
+
+		/*
+		 * La boîte de métadonnées se greffe dans celle de la dépendance, par
+		 * la même économie : deux `add_action`, dont le rendu ne s'exécutera
+		 * que sur l'écran d'édition d'un contenu.
+		 */
+		( new Post_Metabox( $repository ) )->register();
 	}
 
 	/**

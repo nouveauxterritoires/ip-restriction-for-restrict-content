@@ -161,10 +161,38 @@ final class Content_Access {
 		$decision = Access_Policy::decide(
 			$this->resolved_address()->number(),
 			Rule_Set::from_text( $text ),
-			$this->applicable_level_lists( $post_id )
+			$this->applicable_level_lists( $post_id ),
+			$this->post_list( $post_id )
 		);
 
 		return $this->filtered( $decision );
+	}
+
+	/**
+	 * Liste du contenu demandé, et de lui seul.
+	 *
+	 * FNC-04 est obtenu ici par la même économie qu'aux niveaux : la politique
+	 * ne reçoit que la liste de ce contenu-ci. Il n'y a donc rien à comparer,
+	 * et aucune façon pour une autorisation posée sur un article d'en ouvrir un
+	 * autre.
+	 *
+	 * @param int $post_id Contenu demandé.
+	 * @return Rule_Set
+	 */
+	private function post_list( int $post_id ): Rule_Set {
+		if ( 0 === $post_id ) {
+			return Rule_Set::from_text( '' );
+		}
+
+		/** This filter is documented in src/Integration/Content_Access.php */
+		$text = (string) apply_filters(
+			Extension_Points::RULES,
+			$this->repository->load_post_list( $post_id ),
+			Scope::POST->value,
+			$post_id
+		);
+
+		return Rule_Set::from_text( $text );
 	}
 
 	/**
