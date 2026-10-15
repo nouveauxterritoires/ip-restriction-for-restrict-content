@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-15T10:59:21+00:00\n"
+"POT-Creation-Date: 2026-10-15T13:54:08+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ip-restriction-for-restrict-content\n"
@@ -80,6 +80,9 @@ msgid "Restriction par adresse IP — état des capacités"
 msgstr ""
 
 #: src/Admin/Capability_Status_Page.php:97
+#: src/Admin/Settings_Page.php:137
+#: src/Admin/Settings_Page.php:138
+#: src/Admin/Settings_Page.php:240
 msgid "Restriction par adresse IP"
 msgstr ""
 
@@ -154,18 +157,173 @@ msgstr ""
 msgid "Pour y remédier : dans l'administration de Restrict Content, repassez sur sa base de code moderne. Ce plugin repart dès la requête suivante, sans réactivation ni réenregistrement."
 msgstr ""
 
+#: src/Admin/Rejection_Labels.php:35
+msgid "les deux bornes de la plage ne sont pas de la même famille d'adresses"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:37
+msgid "la première borne de la plage est supérieure à la seconde"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:39
+msgid "le préfixe sort des bornes : de 0 à 32 en IPv4, de 0 à 128 en IPv6"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:41
+msgid "un joker ne peut pas précéder un segment chiffré ; le joker remplace les octets de fin"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:43
+msgid "cette règle désignerait toutes les adresses, ce qui ouvrirait tout le contenu restreint"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:45
+msgid "un bloc CIDR ne peut pas porter de joker"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:47
+msgid "un nom d'hôte n'est pas une adresse ; indiquez une adresse IP"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:49
+msgid "le joker n'est pas accepté en IPv6 ; employez un bloc CIDR, par exemple 2001:db8::/32"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:51
+msgid "un octet commençant par zéro est ambigu ; écrivez 10 plutôt que 010"
+msgstr ""
+
+#: src/Admin/Rejection_Labels.php:53
+msgid "cette entrée ne correspond à aucune forme acceptée"
+msgstr ""
+
+#: src/Admin/Rejection_Notice.php:82
+#: src/Admin/Settings_Page.php:280
+msgid "Liste d'autorisation globale"
+msgstr ""
+
+#: src/Admin/Rejection_Notice.php:83
+#: src/Admin/Settings_Page.php:289
+msgid "Liste de blocage d'inscription"
+msgstr ""
+
+#: src/Admin/Rejection_Notice.php:84
+#: src/Admin/Settings_Page.php:318
+msgid "Proxys de confiance"
+msgstr ""
+
+#: src/Admin/Rejection_Notice.php:88
+msgid "Restriction par adresse IP : des entrées sont ignorées."
+msgstr ""
+
+#: src/Admin/Rejection_Notice.php:90
+msgid "Une entrée ignorée ne correspond à aucune adresse : elle n'accorde aucun accès et ne bloque aucune inscription."
+msgstr ""
+
+#. translators: 1: nom du champ, 2: numéro de ligne, 3: entrée refusée, 4: motif du refus.
+#: src/Admin/Rejection_Notice.php:118
+#, php-format
+msgid "%1$s, ligne %2$d — « %3$s » ignorée : %4$s"
+msgstr ""
+
 #: src/Admin/Requirements_Notice.php:108
 msgid "IP Restriction for Restrict Content ne peut pas démarrer : prérequis absents."
 msgstr ""
 
+#: src/Admin/Settings_Page.php:243
+msgid "Votre page avait expiré : rien n'a été enregistré. Rechargez l'écran et recommencez."
+msgstr ""
+
+#: src/Admin/Settings_Page.php:247
+msgid "Réglages enregistrés."
+msgstr ""
+
+#: src/Admin/Settings_Page.php:285
+msgid "Une entrée par ligne. Ces adresses accèdent à tout contenu restreint du site."
+msgstr ""
+
+#: src/Admin/Settings_Page.php:294
+msgid "Une entrée par ligne. Ces adresses ne peuvent pas s'inscrire ; leur accès au contenu n'est pas modifié."
+msgstr ""
+
+#: src/Admin/Settings_Page.php:298
+msgid "Message d'erreur de blocage"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:314
+msgid "Derrière un proxy ou un CDN"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:323
+msgid "Tant que ce champ est vide, aucun en-tête HTTP n'est lu : seule l'adresse de la connexion est évaluée."
+msgstr ""
+
+#: src/Admin/Settings_Page.php:327
+msgid "En-tête de transfert à lire"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:332
+msgid "aucun"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:352
+msgid "Désinstallation"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:355
+msgid "Supprimer ces réglages si le plugin est désinstallé"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:386
+msgid "Diagnostic de la requête en cours"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:388
+msgid "Adresse retenue"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:389
+msgid "indéterminable"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:391
+msgid "Source"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:404
+msgid "adresse de la connexion ; aucun en-tête n'est lu"
+msgstr ""
+
+#. translators: 1: nom de l'en-tête lu, 2: rang de la valeur retenue dans la chaîne.
+#: src/Admin/Settings_Page.php:410
+#, php-format
+msgid "en-tête %1$s, valeur de rang %2$d"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:428
+msgid "le serveur web n'a transmis aucune adresse de connexion"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:430
+msgid "la connexion vient d'un proxy déclaré, mais l'en-tête choisi est absent de la requête"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:432
+msgid "la valeur de l'en-tête n'est pas analysable"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:434
+msgid "la chaîne de transfert ne contient que des proxys déclarés"
+msgstr ""
+
 #. translators: 1: version de PHP requise, 2: version installée.
-#: src/Plugin.php:81
+#: src/Plugin.php:84
 #, php-format
 msgid "PHP %1$s ou plus récent (version installée : %2$s)"
 msgstr ""
 
 #. translators: 1: version de WordPress requise, 2: version installée.
-#: src/Plugin.php:87
+#: src/Plugin.php:90
 #, php-format
 msgid "WordPress %1$s ou plus récent (version installée : %2$s)"
 msgstr ""

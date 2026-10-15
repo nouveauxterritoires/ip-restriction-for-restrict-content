@@ -18,11 +18,14 @@ defined( 'ABSPATH' ) || exit;
 
 use Ip_Restriction_For_Restrict_Content\Admin\Capability_Status_Page;
 use Ip_Restriction_For_Restrict_Content\Admin\Dependency_Labels;
+use Ip_Restriction_For_Restrict_Content\Admin\Rejection_Notice;
 use Ip_Restriction_For_Restrict_Content\Admin\Requirements_Notice;
+use Ip_Restriction_For_Restrict_Content\Admin\Settings_Page;
 use Ip_Restriction_For_Restrict_Content\Domain\Capability_Report;
 use Ip_Restriction_For_Restrict_Content\Domain\Dependency_Diagnosis;
 use Ip_Restriction_For_Restrict_Content\Domain\Requirements;
 use Ip_Restriction_For_Restrict_Content\Integration\Capability_Probe;
+use Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository;
 
 /**
  * Amorçage conditionnel du plugin.
@@ -156,6 +159,17 @@ final class Plugin {
 
 			return;
 		}
+
+		/*
+		 * À partir d'ici, la dépendance est utilisable : l'écran de réglages
+		 * peut s'accrocher à son menu et exiger sa capacité. L'avis d'entrées
+		 * refusées partage le même dépôt, parce qu'il se recalcule depuis les
+		 * réglages stockés plutôt que d'être mémorisé à l'enregistrement.
+		 */
+		$repository = new Settings_Repository();
+
+		( new Settings_Page( $repository ) )->register();
+		( new Rejection_Notice( $repository ) )->register();
 	}
 
 	/**
