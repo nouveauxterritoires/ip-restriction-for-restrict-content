@@ -19,6 +19,9 @@ declare( strict_types = 1 );
 
 namespace Ip_Restriction_For_Restrict_Content\Tests\Contract;
 
+use Ip_Restriction_For_Restrict_Content\Domain\Capability;
+use Ip_Restriction_For_Restrict_Content\Domain\Capability_Catalogue;
+use Ip_Restriction_For_Restrict_Content\Integration\Capability_Probe;
 use WP_UnitTestCase;
 
 /**
@@ -99,38 +102,70 @@ final class DependencyBranchContractTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Le défaut amont qui fausse la détection de branche est toujours présent.
+	 * Toutes les capacités déclarées au catalogue sont en mémoire.
 	 *
-	 * `restrict_content_check_posts_for_shortcode()` émet une requête SQL
-	 * invalide et renvoie donc invariablement `false` (JE-003). Ce test ne
-	 * protège rien : il **surveille**. Le jour où il échoue, c'est que le défaut
-	 * a été corrigé en amont, et que des sites nouvellement installés seront
-	 * orientés autrement. C'est une information, et elle doit arriver par un
-	 * échec de suite plutôt que par un incident en production.
+	 * C'est le test qui relie le catalogue à la réalité. Les classes du
+	 * domaine disent ce que le plugin attend ; ce test dit si l'amont le
+	 * fournit. Les capacités que la dépendance ne charge qu'en administration
+	 * sont chargées explicitement ici, pour qu'aucune ne reste hors de portée
+	 * de la vérification.
 	 *
 	 * @return void
 	 */
-	public function test_upstream_shortcode_detection_is_still_broken(): void {
-		if ( ! class_exists( 'RC_Requirements_Check' ) ) {
-			$this->assertTrue(
-				function_exists( 'rcp_get_membership_levels' ),
-				'Ni la classe d\'amorçage de la variante libre, ni l\'API attendue : '
-				. 'l\'environnement de test n\'est pas celui qu\'on croit.'
+	public function test_every_catalogued_capability_is_available(): void {
+		require_once RCP_PLUGIN_DIR . 'core/includes/admin/metabox.php';
+
+		$report = Capability_Probe::observe( true )->report();
+
+		$this->assertSame(
+			array(),
+			$report->missing_symbols(),
+			'L\'amont ne fournit plus toutes les capacités déclarées au catalogue : '
+			. implode( ', ', $report->missing_symbols() ) . '. '
+			. 'Chaque symbole absent désactive la fonctionnalité qui en dépend (E-04).'
+		);
+	}
+
+	/**
+	 * Hors administration, aucune capacité de contexte d'administration n'est
+	 * rapportée absente.
+	 *
+	 * C'est la contrepartie du test précédent, et elle protège d'un avis faux :
+	 * sur une requête de façade, la boîte de restriction n'est pas chargée, et
+	 * ce n'est pas une rupture amont.
+	 *
+	 * @return void
+	 */
+	public function test_admin_only_capabilities_are_not_reported_missing_on_the_front(): void {
+		$report = Capability_Probe::observe( false )->report();
+
+		$this->assertSame( array(), $report->missing_symbols() );
+
+		foreach ( Capability_Catalogue::declared() as $capability ) {
+			if ( Capability::CONTEXT_ADMIN !== $capability->context() ) {
+				continue;
+			}
+
+			$this->assertSame(
+				\Ip_Restriction_For_Restrict_Content\Domain\Capability_Report::UNOBSERVABLE,
+				$report->state_of( $capability ),
+				$capability->symbol() . ' doit être rapportée non observable hors administration.'
 			);
-
-			return;
 		}
+	}
 
-		$reflection = new \ReflectionClass( 'RC_Requirements_Check' );
-		$file       = (string) $reflection->getFileName();
-		$source     = (string) file_get_contents( $file );
+	/**
+	 * La sonde conclut que la dépendance est utilisable dans cet
+	 * environnement.
+	 *
+	 * @return void
+	 */
+	public function test_the_probe_concludes_the_dependency_is_usable(): void {
+		$diagnosis = Capability_Probe::observe( false )->dependency();
 
-		$this->assertStringContainsString(
-			'CONTAINS',
-			$source,
-			'La détection amont par code court n\'utilise plus l\'opérateur inexistant '
-			. '« CONTAINS » : le défaut consigné en JE-003 a été corrigé. Relire le '
-			. 'nouveau code — le routage des sites nouvellement installés a changé.'
+		$this->assertTrue(
+			$diagnosis->is_usable(),
+			'La sonde ne conclut pas à une dépendance utilisable : état « ' . $diagnosis->state() . ' ».'
 		);
 	}
 }

@@ -136,4 +136,50 @@ final class BootTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '<script>', $output );
 		$this->assertStringContainsString( '&lt;script&gt;', $output );
 	}
+
+	/**
+	 * L'amorçage ne tente aucune requête HTTP sortante.
+	 *
+	 * SEC-16 est déjà couverte à la relecture par `bin/scan-secrets.sh`, qui
+	 * attrape l'intention dans le code livré. Ce test établit le fait à
+	 * l'exécution : le bouchon échoue à la moindre tentative, y compris celle
+	 * qu'une dépendance transitive déclencherait pour notre compte.
+	 *
+	 * @return void
+	 */
+	public function test_booting_attempts_no_outbound_request(): void {
+		$attempts = array();
+
+		add_filter(
+			'pre_http_request',
+			static function ( $preempt, $args, $url ) use ( &$attempts ) {
+				unset( $preempt, $args );
+
+				$attempts[] = (string) $url;
+
+				return new \WP_Error( 'rcipr_no_network', 'Aucun appel réseau n\'est autorisé.' );
+			},
+			1,
+			3
+		);
+
+		$plugin = Plugin::from_environment();
+		$plugin->register();
+
+		/*
+		 * La dépendance rend ses propres avis sur cette accroche : la sortie
+		 * est absorbée, sans quoi PHPUnit déclare le test « risqué » pour un
+		 * balisage qui n'est pas le nôtre.
+		 */
+		ob_start();
+		do_action( 'admin_notices' );
+		ob_end_clean();
+
+		$this->assertSame(
+			array(),
+			$attempts,
+			'Le plugin a tenté une requête HTTP sortante vers : ' . implode( ', ', $attempts )
+			. '. SEC-16 l\'interdit sans exception.'
+		);
+	}
 }

@@ -100,6 +100,20 @@
         <exclude-pattern>tests/*</exclude-pattern>
     </rule>
 
+    <!-- Un test de contrat doit installer l'état de requête que WordPress
+         aurait construit lui-même : le contenu courant pour la boîte de
+         restriction, les menus d'administration pour un écran. Ces écritures
+         sont la mise en place du test, pas une habitude de code d'exécution. -->
+    <rule ref="WordPress.WP.GlobalVariablesOverride">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <!-- Le message d'une exception de test est lu dans un terminal, jamais
+         rendu dans une page : l'échapper n'ajouterait aucune sécurité et
+         masquerait ce que la dépendance a réellement émis. -->
+    <rule ref="WordPress.Security.EscapeOutput">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
     <!-- PSR-4 : les noms de fichiers ne suivent pas la convention WordPress. -->
     <rule ref="WordPress.Files.FileName">
         <exclude-pattern>src/*</exclude-pattern>
