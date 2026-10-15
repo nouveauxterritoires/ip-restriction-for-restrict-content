@@ -17,13 +17,18 @@
  * celle qui explique l'accès.
  *
  * **FNC-04 — la non-transitivité — tient à ce que cette méthode ne reçoit
- * pas.** Les listes de niveau qu'on lui passe sont celles des niveaux qui
- * restreignent le contenu demandé, et elles seules : une autorisation posée sur
- * un autre niveau n'est pas même consultée. Ce n'est pas une comparaison qui
- * échoue, c'est une liste qui n'entre pas dans le calcul. L'implémentation
- * naïve — une seule liste consultée quelle que soit la restriction rencontrée —
- * violerait FNC-04 silencieusement, et transformerait chaque autorisation de
- * niveau en autorisation globale.
+ * pas.** Les listes qu'on lui passe sont celles des niveaux qui restreignent le
+ * contenu demandé et celle de ce contenu, et elles seules : une autorisation
+ * posée sur un autre niveau ou sur un autre contenu n'est pas même consultée.
+ * Ce n'est pas une comparaison qui échoue, c'est une liste qui n'entre pas dans
+ * le calcul. L'implémentation naïve — une seule liste consultée quelle que soit
+ * la restriction rencontrée — violerait FNC-04 silencieusement, et
+ * transformerait chaque autorisation de niveau ou de contenu en autorisation
+ * globale.
+ *
+ * Les portées sont consultées de la plus large à la plus étroite : globale,
+ * niveau, contenu. C'est sans effet sur le fait d'accorder, mais la portée
+ * rapportée est celle qu'il faudra retirer pour que l'accès cesse.
  *
  * @package Ip_Restriction_For_Restrict_Content
  */
@@ -49,9 +54,15 @@ final class Access_Policy {
 	 * @param Ip_Number|null       $address     Adresse évaluée, ou null si indéterminable.
 	 * @param Rule_Set             $global_list Liste d'autorisation globale.
 	 * @param array<int, Rule_Set> $level_lists Listes des niveaux qui restreignent le contenu demandé, indexées par identifiant de niveau.
+	 * @param Rule_Set             $post_list   Liste du contenu demandé.
 	 * @return Access_Decision
 	 */
-	public static function decide( ?Ip_Number $address, Rule_Set $global_list, array $level_lists ): Access_Decision {
+	public static function decide(
+		?Ip_Number $address,
+		Rule_Set $global_list,
+		array $level_lists,
+		Rule_Set $post_list
+	): Access_Decision {
 		$global = Matcher::match( $address, $global_list );
 
 		if ( $global->is_match() ) {
@@ -64,6 +75,12 @@ final class Access_Policy {
 			if ( $match->is_match() ) {
 				return Access_Decision::granted_by( Scope::MEMBERSHIP_LEVEL, $match->rule(), (int) $level_id );
 			}
+		}
+
+		$post = Matcher::match( $address, $post_list );
+
+		if ( $post->is_match() ) {
+			return Access_Decision::granted_by( Scope::POST, $post->rule() );
 		}
 
 		return Access_Decision::not_handled();

@@ -51,7 +51,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 		$decision = Access_Policy::decide(
 			$this->number( '192.0.2.1' ),
 			Rule_Set::from_text( "192.0.2.0/24\n" ),
-			array()
+			array(),
+			Rule_Set::empty()
 		);
 
 		$this->assertTrue( $decision->is_granted() );
@@ -71,7 +72,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 		$decision = Access_Policy::decide(
 			$this->number( '203.0.113.9' ),
 			Rule_Set::from_text( "192.0.2.0/24\n" ),
-			array()
+			array(),
+			Rule_Set::empty()
 		);
 
 		$this->assertFalse( $decision->is_granted() );
@@ -90,7 +92,7 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 	 */
 	public function test_an_empty_list_grants_nothing(): void {
 		$this->assertTrue(
-			Access_Policy::decide( $this->number( '192.0.2.1' ), Rule_Set::empty(), array() )->is_not_handled()
+			Access_Policy::decide( $this->number( '192.0.2.1' ), Rule_Set::empty(), array(), Rule_Set::empty() )->is_not_handled()
 		);
 	}
 
@@ -104,7 +106,7 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 	 */
 	public function test_an_undetermined_address_grants_nothing(): void {
 		$this->assertTrue(
-			Access_Policy::decide( null, Rule_Set::from_text( "0.0.0.0/1\n" ), array() )->is_not_handled()
+			Access_Policy::decide( null, Rule_Set::from_text( "0.0.0.0/1\n" ), array(), Rule_Set::empty() )->is_not_handled()
 		);
 	}
 
@@ -118,7 +120,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 			Access_Policy::decide(
 				$this->number( '192.0.2.1' ),
 				Rule_Set::from_text( "exemple.test\n*\n" ),
-				array()
+				array(),
+				Rule_Set::empty()
 			)->is_not_handled()
 		);
 	}
@@ -141,7 +144,7 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 			$names[] = $parameter->getName();
 		}
 
-		$this->assertSame( array( 'address', 'global_list', 'level_lists' ), $names );
+		$this->assertSame( array( 'address', 'global_list', 'level_lists', 'post_list' ), $names );
 	}
 
 	/**
@@ -179,7 +182,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 		$decision = Access_Policy::decide(
 			$this->number( '192.0.2.1' ),
 			Rule_Set::empty(),
-			array( 7 => Rule_Set::from_text( '192.0.2.1' ) )
+			array( 7 => Rule_Set::from_text( '192.0.2.1' ) ),
+			Rule_Set::empty()
 		);
 
 		$this->assertTrue( $decision->is_granted() );
@@ -206,7 +210,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 		$decision = Access_Policy::decide(
 			$this->number( '192.0.2.1' ),
 			Rule_Set::empty(),
-			array( 9 => Rule_Set::empty() )
+			array( 9 => Rule_Set::empty() ),
+			Rule_Set::empty()
 		);
 
 		$this->assertTrue(
@@ -231,7 +236,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 			array(
 				3 => Rule_Set::from_text( '192.0.2.1' ),
 				5 => Rule_Set::from_text( '198.51.100.9' ),
-			)
+			),
+			Rule_Set::empty()
 		);
 
 		$this->assertTrue( $decision->is_granted() );
@@ -252,7 +258,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 		$decision = Access_Policy::decide(
 			$this->number( '192.0.2.1' ),
 			Rule_Set::from_text( '192.0.2.1' ),
-			array( 7 => Rule_Set::from_text( '192.0.2.1' ) )
+			array( 7 => Rule_Set::from_text( '192.0.2.1' ) ),
+			Rule_Set::empty()
 		);
 
 		$this->assertSame( Scope::GLOBAL_LIST, $decision->scope() );
@@ -272,7 +279,8 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 				array(
 					3 => Rule_Set::empty(),
 					5 => Rule_Set::from_text( "exemple.test\n" ),
-				)
+				),
+				Rule_Set::empty()
 			)->is_not_handled()
 		);
 	}
@@ -287,8 +295,69 @@ final class AccessPolicyTest extends WP_UnitTestCase {
 			Access_Policy::decide(
 				null,
 				Rule_Set::from_text( '0.0.0.0/1' ),
-				array( 7 => Rule_Set::from_text( '0.0.0.0/1' ) )
+				array( 7 => Rule_Set::from_text( '0.0.0.0/1' ) ),
+				Rule_Set::from_text( '0.0.0.0/1' )
 			)->is_not_handled()
 		);
+	}
+
+	/**
+	 * Une adresse de la liste d'un contenu accède à ce contenu (FNC-03).
+	 *
+	 * @return void
+	 */
+	public function test_an_address_on_a_post_list_is_granted_for_that_post(): void {
+		$decision = Access_Policy::decide(
+			$this->number( '192.0.2.1' ),
+			Rule_Set::empty(),
+			array(),
+			Rule_Set::from_text( '192.0.2.1' )
+		);
+
+		$this->assertTrue( $decision->is_granted() );
+		$this->assertSame( Scope::POST, $decision->scope() );
+	}
+
+	/**
+	 * La liste reçue est celle du contenu demandé, et d'aucun autre.
+	 *
+	 * La non-transitivité vaut pour la portée par contenu comme pour celle par
+	 * niveau, et par le même moyen : la politique ne reçoit que la liste du
+	 * contenu demandé. Une autorisation posée sur un autre contenu n'est pas
+	 * même consultée (FNC-03, FNC-04).
+	 *
+	 * @return void
+	 */
+	public function test_a_post_authorisation_does_not_cross_to_another_post(): void {
+		$decision = Access_Policy::decide(
+			$this->number( '192.0.2.1' ),
+			Rule_Set::empty(),
+			array(),
+			Rule_Set::empty()
+		);
+
+		$this->assertTrue( $decision->is_not_handled() );
+	}
+
+	/**
+	 * Les trois portées sont rapportées de la plus large à la plus étroite.
+	 *
+	 * L'ordre ne change pas le fait d'accorder — la disjonction est
+	 * commutative — mais il change la portée rapportée, et donc le
+	 * diagnostic : la plus large est celle qui explique l'accès, et c'est elle
+	 * qu'il faut retirer pour que l'accès cesse.
+	 *
+	 * @return void
+	 */
+	public function test_the_widest_scope_explains_the_access(): void {
+		$everywhere = Rule_Set::from_text( '192.0.2.1' );
+
+		$global = Access_Policy::decide( $this->number( '192.0.2.1' ), $everywhere, array( 7 => $everywhere ), $everywhere );
+		$level  = Access_Policy::decide( $this->number( '192.0.2.1' ), Rule_Set::empty(), array( 7 => $everywhere ), $everywhere );
+		$post   = Access_Policy::decide( $this->number( '192.0.2.1' ), Rule_Set::empty(), array(), $everywhere );
+
+		$this->assertSame( Scope::GLOBAL_LIST, $global->scope() );
+		$this->assertSame( Scope::MEMBERSHIP_LEVEL, $level->scope() );
+		$this->assertSame( Scope::POST, $post->scope() );
 	}
 }
