@@ -223,9 +223,21 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ pro-archive ]
     if: needs.pro-archive.outputs.available == 'true'
+    # La tolérance est conditionnelle, et non posée une fois pour toutes.
+    #
     # Une contribution externe ne doit pas être bloquée par une dépendance
-    # commerciale qu'elle ne peut pas se procurer (docs/tests.md §2.3).
-    continue-on-error: true
+    # commerciale qu'elle ne peut pas se procurer (docs/tests.md §2.3) : une
+    # demande de tirage issue d'un fork ne reçoit pas les secrets du dépôt, le
+    # job `pro-archive` conclut à l'absence d'archive, et celui-ci est
+    # simplement ignoré. Reste le cas d'une demande de tirage interne, qui a
+    # bien le secret : elle est tolérée, car un échec de la dépendance
+    # commerciale n'est pas imputable à la contribution relue.
+    #
+    # Mais un `continue-on-error: true` de job rendait aussi muets le push sur
+    # `main` et l'exécution programmée — précisément les deux occasions où
+    # cette suite est la seule surveillance de la variante commerciale, et où
+    # une rupture de l'amont doit rougir avant les utilisateurs.
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
     services:
       mysql:
         image: mysql:8.0
@@ -256,10 +268,15 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends subversion
       - name: Dépendances
         run: composer install --prefer-dist
+      # Le script refuse une réponse en erreur (`curl --fail`) et n'accepte le
+      # fichier qu'après avoir reconnu une archive contenant le plugin
+      # attendu : sans quoi une page d'erreur HTML écrite dans un « .zip »
+      # n'échouerait qu'à la décompression, loin de sa cause. Le lien porte un
+      # jeton de licence et n'apparaît dans aucun message.
       - name: Archive commerciale
         env:
           RCP_PRO_ARCHIVE_URL: ${{ secrets.RCP_PRO_ARCHIVE_URL }}
-        run: curl -sSL "$RCP_PRO_ARCHIVE_URL" -o vendor-plugins/restrict-content-pro.zip
+        run: bash bin/fetch-pro-archive.sh vendor-plugins/restrict-content-pro.zip
       - name: Bibliothèque de tests et dépendance d'adhésions
         run: bash bin/install-wp-tests.sh
       - name: Suite contract

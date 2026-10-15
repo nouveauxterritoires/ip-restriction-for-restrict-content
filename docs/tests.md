@@ -144,11 +144,35 @@ ajouterait enfin un filtre sur la décision de terme — auquel cas le test
 **Les deux variantes.** La suite s'exécute contre Restrict Content
 (`make test-contract`) et contre Restrict Content Pro
 (`make test-contract-pro`). Le second job ne s'exécute en intégration continue
-que si un secret de dépôt met l'archive commerciale à disposition, en
-`continue-on-error` pour ne pas bloquer une contribution externe (§12.1). Un
+que si un secret de dépôt met l'archive commerciale à disposition (§12.1). Un
 déclencheur quotidien exécute la suite contre la dernière version publiée de la
 variante gratuite : une rupture amont devient ainsi un incident diagnosticable
 avant les utilisateurs.
+
+**La tolérance du job `contract-pro` distingue deux situations**, là où un
+`continue-on-error: true` de job les confondait — et rendait ce job incapable
+de rien signaler, y compris sur l'exécution programmée dont il est la seule
+surveillance de la variante commerciale.
+
+| Occasion | Accès au secret | Verdict |
+|---|---|---|
+| Demande de tirage issue d'un fork | non | Job **ignoré** : `pro-archive` conclut à l'absence d'archive, et aucune contribution n'est bloquée par une dépendance qu'elle ne peut pas se procurer |
+| Demande de tirage interne | oui | Job **toléré** (`continue-on-error` conditionné à `github.event_name == 'pull_request'`) : un échec de la dépendance commerciale n'est pas imputable à la contribution relue |
+| Push sur `main`, exécution programmée | oui | Job **bloquant** : une rupture de l'amont rougit, et c'est le seul endroit où elle peut l'être |
+
+Le job `pro-archive` n'expose que la **présence** du secret, jamais sa valeur :
+un secret n'est pas lisible depuis un `if` de job, d'où ce job intermédiaire.
+
+**Et l'archive obtenue est vérifiée avant usage** (`bin/fetch-pro-archive.sh`).
+Le téléchargement refuse une réponse en erreur (`curl --fail`), puis le fichier
+n'est accepté qu'après lecture de son catalogue : une archive ZIP, contenant
+`restrict-content-pro/restrict-content-pro.php`, le chemin exact que
+`bin/install-wp-tests.sh` et `tests/bootstrap.php` attendent tous deux. Sans
+cela, un lien de licence périmé écrivait une page d'erreur HTML dans un fichier
+nommé « .zip » et l'échec n'apparaissait qu'à la décompression, en nommant un
+ZIP corrompu plutôt que la licence. Les messages d'échec nomment désormais la
+cause — lien de licence à régénérer, ou racine d'archive inattendue — et **ne
+citent jamais le lien**, qui porte un jeton de licence.
 
 **Et aucun test n'est ignoré pour autant.** Le mécanisme de bascule de branche
 n'existe que dans la variante gratuite : plutôt que de sauter les tests qui le
