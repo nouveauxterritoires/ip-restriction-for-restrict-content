@@ -160,6 +160,43 @@ jobs:
       - name: Suite contract
         run: bash bin/run-suite.sh contract
 
+  matching:
+    name: Suite matching — moteur de correspondance
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports: [ '3306:3306' ]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      WP_TESTS_DB_HOST: 127.0.0.1
+      WP_TESTS_DB_NAME: wordpress_test
+      WP_TESTS_DB_USER: root
+      WP_TESTS_DB_PASSWORD: root
+      WP_TESTS_DIR: /tmp/wp-tests/lib
+      WP_CORE_DIR: /tmp/wp-tests/core
+      RCP_VARIANT: free
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+          tools: composer:v2
+      - name: Subversion
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends subversion
+      - name: Dépendances
+        run: composer install --prefer-dist
+      - name: Bibliothèque de tests et dépendance d'adhésions
+        run: bash bin/install-wp-tests.sh
+      - name: Suite matching
+        run: bash bin/run-suite.sh matching
+
   # La variante commerciale n'est jamais versionnée (cahier des charges §12.1).
   # Le job n'existe donc que si un secret de dépôt met son archive à
   # disposition — et le secret n'est pas lisible depuis un `if` de job, d'où ce
@@ -231,7 +268,7 @@ jobs:
   coverage:
     name: Couverture et seuil
     runs-on: ubuntu-latest
-    needs: [ unit, integration, contract-free ]
+    needs: [ unit, integration, contract-free, matching ]
     services:
       mysql:
         image: mysql:8.0
@@ -267,7 +304,12 @@ jobs:
         # Seules les suites qui contiennent des tests sont mesurées : une suite
         # vide produirait un taux partiel trompeur (JE-001). Cette liste s'étend
         # à mesure que les suites métier se remplissent.
-        run: SUITES="unit integration contract" bash bin/coverage.sh
+        #
+        # La mesure demande la couverture de chemins, et donc davantage de
+        # mémoire : `tests/bootstrap.php` restreint l'instrumentation d'Xdebug
+        # au seul `src/`, sans quoi le processus est tué par le système
+        # (JE-018).
+        run: SUITES="unit integration contract matching" bash bin/coverage.sh
       - name: Seuil
         run: bash bin/check-coverage.sh
       - uses: actions/upload-artifact@v4
@@ -299,7 +341,7 @@ jobs:
   build:
     name: Archive distribuable
     runs-on: ubuntu-latest
-    needs: [ lint, security, unit, integration, contract-free ]
+    needs: [ lint, security, unit, integration, contract-free, matching ]
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

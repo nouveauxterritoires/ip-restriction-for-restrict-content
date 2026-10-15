@@ -36,7 +36,10 @@
     <!-- Les rapports sont demandés explicitement en ligne de commande
          (`make coverage`), afin qu'une suite ciblée n'affiche pas un taux
          partiel trompeur. -->
-    <coverage processUncoveredFiles="true">
+    <!-- `pathCoverage` est demandé pour le moteur : le cahier des charges §11.6
+         exige 100 % des lignes **et des branches** sur les répertoires purs, et
+         une branche non prise ne se voit pas dans une couverture de lignes. -->
+    <coverage processUncoveredFiles="true" pathCoverage="true">
         <include>
             <directory suffix=".php">src</directory>
         </include>

@@ -45,37 +45,65 @@ baseline="0"
 
 threshold="$( php -r 'printf( "%.2f", max( (float) $argv[1], (float) $argv[2] ) );' "$floor" "$baseline" )"
 
-# §11.6 : `src/Domain/` est tenu à 100 %. C'est du code pur, sans dépendance,
-# sans entrée-sortie : il n'y a pas de ligne qu'on ne puisse exercer, et donc
-# pas d'excuse. Le seuil global, lui, laisse de la place au code de transport.
-domain="$(
-  php -r '
-    $xml = simplexml_load_file( $argv[1] );
-    $covered = 0;
-    $total   = 0;
+# §11.6 : les répertoires purs sont tenus à 100 % des lignes. C'est du code
+# sans dépendance et sans entrée-sortie : il n'y a pas de ligne qu'on ne puisse
+# exercer, et donc pas d'excuse. Le seuil global, lui, laisse de la place au
+# code de transport.
+PURE_DIRECTORIES="${PURE_DIRECTORIES:-src/Domain src/Address src/Rule src/Policy}"
 
-    foreach ( $xml->project->file as $file ) {
-        if ( false === strpos( (string) $file["name"], "/src/Domain/" ) ) {
-            continue;
-        }
+for directory in $PURE_DIRECTORIES; do
+  measure="$(
+    php -r '
+      $xml = simplexml_load_file( $argv[1] );
+      $covered = 0;
+      $total   = 0;
 
-        $covered += (int) $file->metrics["coveredstatements"];
-        $total   += (int) $file->metrics["statements"];
-    }
+      foreach ( $xml->project->file as $file ) {
+          if ( false === strpos( (string) $file["name"], "/" . trim( $argv[2], "/" ) . "/" ) ) {
+              continue;
+          }
 
-    printf( "%d %d", $covered, $total );
-  ' "$file"
-)"
+          $covered += (int) $file->metrics["coveredstatements"];
+          $total   += (int) $file->metrics["statements"];
+      }
 
-domain_covered="${domain% *}"
-domain_total="${domain#* }"
+      printf( "%d %d", $covered, $total );
+    ' "$file" "$directory"
+  )"
 
-if [ "$domain_total" -gt 0 ] && [ "$domain_covered" -lt "$domain_total" ]; then
-  echo "Domaine   : ${domain_covered}/${domain_total} — src/Domain/ doit être couvert à 100 %." >&2
+  pure_covered="${measure% *}"
+  pure_total="${measure#* }"
+
+  # Un répertoire absent ou vide ne fait pas échouer : les répertoires de la
+  # liste arrivent lot par lot, et un plancher sur du vide ne protège rien.
+  if [ "$pure_total" -eq 0 ]; then
+    echo "Lignes     : ${directory} — aucune ligne mesurée"
+    continue
+  fi
+
+  if [ "$pure_covered" -lt "$pure_total" ]; then
+    echo "Lignes     : ${directory} — ${pure_covered}/${pure_total}, le cahier des charges §11.6 en exige 100 %." >&2
+    exit 1
+  fi
+
+  echo "Lignes     : ${directory} — 100% (${pure_covered}/${pure_total})"
+done
+
+# Le moteur est en outre tenu à 100 % des **branches**. Une couverture de
+# lignes n'y suffit pas : `if ( $a && $b )` tient sur une ligne et porte
+# plusieurs chemins. La mesure de branches n'est pas dans le rapport Clover,
+# elle est relue depuis les mesures sérialisées.
+ENGINE_DIRECTORIES="${ENGINE_DIRECTORIES:-src/Address src/Rule src/Policy}"
+merged="${MERGED_COVERAGE:-$( dirname "$file" )/merged.cov}"
+
+if [ -f "$merged" ]; then
+  # shellcheck disable=SC2086
+  php bin/lib/check-branches.php "$merged" $ENGINE_DIRECTORIES || exit 1
+else
+  echo "Branches   : mesure fusionnée absente (${merged}) — exécutez « make coverage »." >&2
   exit 1
 fi
 
-echo "Domaine    : 100% (${domain_covered}/${domain_total})"
 echo "Couverture : ${percent}% (${covered}/${total})"
 echo "Seuil      : ${threshold}% (plancher ${floor}%, référence ${baseline}%)"
 

@@ -52,6 +52,28 @@ function ip_restriction_for_restrict_content_tests_requested_suite(): ?string {
 $rcipr_suite = ip_restriction_for_restrict_content_tests_requested_suite();
 
 /*
+ * Restreint l'instrumentation de couverture au code du plugin.
+ *
+ * Le cahier des charges §11.6 exige 100 % des lignes **et des branches** sur
+ * les répertoires purs, ce qui demande la couverture de chemins d'Xdebug. Or
+ * Xdebug instrumente par défaut tout ce que le processus exécute : sur une
+ * suite qui charge un WordPress complet, la couverture de chemins épuise la
+ * mémoire et le processus est tué par le système — sans message, avec le code
+ * 137. PHPUnit filtre les mesures **après** collecte : son `<include>` ne
+ * réduit donc pas l'empreinte.
+ *
+ * Le filtre doit être posé avant l'exécution, et il ne concerne que les
+ * processus de mesure.
+ */
+if ( false !== strpos( (string) getenv( 'XDEBUG_MODE' ), 'coverage' ) && function_exists( 'xdebug_set_filter' ) ) {
+	xdebug_set_filter(
+		XDEBUG_FILTER_CODE_COVERAGE,
+		XDEBUG_PATH_INCLUDE,
+		array( dirname( __DIR__ ) . '/src/' )
+	);
+}
+
+/*
  * Les suites ne peuvent pas partager un même processus.
  *
  * La suite « unit » remplace les fonctions de WordPress via Brain Monkey
