@@ -91,16 +91,20 @@ done
 
 # Le moteur est en outre tenu à 100 % des **branches**. Une couverture de
 # lignes n'y suffit pas : `if ( $a && $b )` tient sur une ligne et porte
-# plusieurs chemins. La mesure de branches n'est pas dans le rapport Clover,
-# elle est relue depuis les mesures sérialisées.
+# plusieurs chemins. La mesure n'est pas dans le rapport Clover, et elle est
+# relue de la mesure d'une seule suite : les données de branches ne se
+# fusionnent pas de façon fiable d'un processus à l'autre (JE-021). La suite
+# retenue est celle qui exerce les répertoires purs, ce qui resserre le
+# contrôle au lieu de le relâcher.
 ENGINE_DIRECTORIES="${ENGINE_DIRECTORIES:-src/Address src/Rule src/Policy}"
-merged="${MERGED_COVERAGE:-$( dirname "$file" )/merged.cov}"
+ENGINE_SUITE="${ENGINE_SUITE:-matching}"
+engine_measure="${ENGINE_COVERAGE:-$( dirname "$file" )/parts/${ENGINE_SUITE}.cov}"
 
-if [ -f "$merged" ]; then
+if [ -f "$engine_measure" ]; then
   # shellcheck disable=SC2086
-  php bin/lib/check-branches.php "$merged" $ENGINE_DIRECTORIES || exit 1
+  php bin/lib/check-branches.php "$engine_measure" $ENGINE_DIRECTORIES || exit 1
 else
-  echo "Branches   : mesure fusionnée absente (${merged}) — exécutez « make coverage »." >&2
+  echo "Branches   : mesure de la suite ${ENGINE_SUITE} absente (${engine_measure}) — exécutez « make coverage »." >&2
   exit 1
 fi
 

@@ -10,13 +10,18 @@
  * exercée.
  *
  * Le rapport Clover ne transporte pas cette information : la mesure est donc
- * relue depuis la mesure sérialisée **fusionnée** que `bin/coverage.sh`
- * conserve. Fusionnée, et non suite par suite : les identifiants de branche
- * d'un fichier chargé mais non exécuté ne coïncident pas avec ceux du même
- * fichier exécuté, et unir les mesures à la main produit des branches
- * fantômes, rapportées non prises.
+ * relue depuis la mesure sérialisée de php-code-coverage. Celle d'**une seule
+ * suite**, et non une fusion : les données de branches ne se fusionnent pas de
+ * façon fiable d'un processus à l'autre — une même méthode se retrouve décrite
+ * par deux modèles de branches dont les identifiants et les lignes ne
+ * coïncident pas, et la moitié est alors rapportée non prise alors qu'elle est
+ * exercée (JE-021).
  *
- * Usage : php bin/lib/check-branches.php <mesure fusionnée> <répertoire relatif>...
+ * Ce n'est pas un assouplissement, c'est un resserrement : les répertoires
+ * purs sont exercés par la suite qui leur est dédiée, et une branche qui ne
+ * serait prise que par une autre suite est rapportée non prise.
+ *
+ * Usage : php bin/lib/check-branches.php <mesure d'une suite> <répertoire relatif>...
  *
  * @package Ip_Restriction_For_Restrict_Content
  */
@@ -35,7 +40,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', dirname( __DIR__, 2 ) . '/' );
 }
 
-$rcipr_measure_file = $argv[1] ?? 'tests/coverage/merged.cov';
+$rcipr_measure_file = $argv[1] ?? 'tests/coverage/parts/matching.cov';
 $rcipr_directories  = array_slice( $argv, 2 );
 
 if ( array() === $rcipr_directories ) {

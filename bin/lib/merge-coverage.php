@@ -20,7 +20,6 @@ declare( strict_types = 1 );
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 use SebastianBergmann\CodeCoverage\Report\Clover;
 use SebastianBergmann\CodeCoverage\Report\Html\Facade;
-use SebastianBergmann\CodeCoverage\Report\PHP;
 
 require_once dirname( __DIR__, 2 ) . '/vendor/autoload.php';
 
@@ -72,18 +71,6 @@ foreach ( $rcipr_files as $rcipr_file ) {
 ( new Clover() )->process( $rcipr_merged, $rcipr_clover );
 ( new Facade() )->process( $rcipr_merged, $rcipr_html );
 
-/*
- * La mesure fusionnée est conservée telle quelle : le rapport Clover ne
- * transporte pas la couverture de **branches**, que le cahier des charges
- * §11.6 exige à 100 % sur le moteur. `bin/lib/check-branches.php` la relit.
- *
- * Elle est relue de la fusion et non des mesures suite par suite : les
- * identifiants de branche d'un fichier chargé mais non exécuté ne coïncident
- * pas avec ceux du même fichier exécuté, et unir les mesures à la main
- * produisait des branches fantômes, rapportées non prises. La fusion de
- * php-code-coverage, elle, sait réconcilier ses propres mesures.
- */
-( new PHP() )->process( $rcipr_merged, dirname( $rcipr_clover ) . '/merged.cov' );
 
 if ( ! file_exists( $rcipr_clover ) ) {
 	fwrite( STDERR, "La fusion n'a produit aucun rapport : {$rcipr_clover} est absent.\n" );
