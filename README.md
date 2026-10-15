@@ -9,22 +9,30 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Le plugin ne restreint rien pour le moment.** Le dépôt est au lot 0. Ce qui
-est livré et vérifié :
+**Le plugin ne restreint rien pour le moment.** Les lots 0 et 1 sont livrés. Ce
+qui est livré et vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
 | Environnement de développement reproductible en une commande | `make up` provisionne WordPress, la base, la base de test, la capture d'e-mails et la dépendance |
 | Amorçage conditionnel du plugin | `src/Plugin.php`, suite `integration` |
-| Contrôle des prérequis par **capacité**, jamais par version ni par nom de plugin | `src/Plugin.php`, suite `unit` et suite `integration` |
-| Avis d'administration nommant précisément le prérequis absent | `src/Admin/Requirements_Notice.php`, suite `unit` |
-| Cinq suites de tests déclarées, dont deux peuplées | `phpunit.xml.dist`, `tests/` |
+| Contrôle des prérequis par **capacité**, jamais par version ni par nom de plugin | `src/Plugin.php`, `src/Domain/`, suites `unit` et `integration` |
+| Sonde étendue aux quatorze capacités du cahier des charges §5.1, jamais mémorisée | `src/Integration/Capability_Probe.php`, `tests/integration/ProbePersistenceTest.php` |
+| Avis d'administration nommant la cause **constatée** — dépendance absente, ou active sur sa base de code historique — et l'action de retour | `src/Admin/Dependency_Labels.php`, suites `unit` et `integration` |
+| Écran d'état des capacités, en lecture seule, disponible même quand la dépendance ne l'est pas | `src/Admin/Capability_Status_Page.php`, `tests/integration/CapabilityStatusPageTest.php` |
+| Preuve par l'exécution que chaque accroche du §5.1 se déclenche | `tests/contract/`, 36 tests contre Restrict Content 4.0.5 |
+| Preuve par l'exécution que la bascule de branche amont est réversible, sous capacité et sous nonce | `tests/contract/BranchSwitchContractTest.php` |
+| Cinq suites de tests déclarées, dont trois peuplées — 101 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
 **Rien d'autre.** Ni liste d'autorisation, ni liste de blocage, ni écran de
 réglages, ni moteur de correspondance d'adresses. Ce que le plugin fera est
 spécifié dans le cahier des charges ; le découpage en lots est au §13.
+
+**Ce qui reste à faire sur le lot 1** : exécuter la suite `contract` contre
+Restrict Content Pro, ce qui demande son archive (`make test-contract-pro`) et
+lèvera le point ouvert V-10.
 
 ---
 

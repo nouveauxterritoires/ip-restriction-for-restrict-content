@@ -490,3 +490,138 @@ Ce constat et JE-001 partagent une morale : **la garde `ABSPATH` transforme
 toute inclusion hors WordPress en arrêt silencieux à succès**. Tout outil qui
 inclut les fichiers du plugin en dehors de WordPress doit définir `ABSPATH` au
 préalable. C'est le prix de SEC-15, et il vaut d'être payé sciemment.
+
+---
+
+## JE-013 — « Dernière version » de WordPress ne désigne pas la même chose pour le cœur et pour la bibliothèque de tests
+
+**Date** : 15 octobre 2026 · **Contexte** : première exécution réelle des suites
+`contract` et `integration` au lot 1.
+
+`bin/install-wp-tests.sh` traduisait `WP_VERSION=latest` de deux façons
+incompatibles dans le même script : le cœur de WordPress était téléchargé
+depuis `latest.tar.gz`, donc la dernière version **publiée**, tandis que la
+bibliothèque de tests était récupérée sur `trunk`, donc la version **en
+développement**.
+
+Les deux coïncident la plupart du temps. Dès qu'une version majeure est en
+préparation, elles divergent, et l'amorçage échoue sur un symbole que seule la
+branche de développement définit :
+
+```
+Error in bootstrap script: Error: Interface "WP_Secrets_Store" not found
+```
+
+Le message ne nomme pas sa cause. Rien n'y évoque une divergence de versions, et
+le premier réflexe est de chercher le défaut dans le plugin.
+
+**Conséquence** : `latest` est désormais **résolu** en numéro de version par
+l'API de WordPress.org, et le même numéro sert au cœur et à la bibliothèque. Le
+numéro retenu est enregistré dans `$WP_CORE_DIR/.rcipr-wp-version` : le cœur et
+la bibliothèque vivent dans un volume persistant, et une version retenue
+précédemment doit être remplacée, sans quoi la divergence survit d'une exécution
+à l'autre. `WP_VERSION=trunk` reste possible, et prend alors la version de
+développement des **deux** côtés.
+
+Deux morales. La première : une chaîne d'outils qui lit deux fois la même
+variable doit en tirer deux fois la même conclusion, et il faut le vérifier
+plutôt que l'espérer. La seconde : ce défaut était présent depuis le lot 0 et
+n'a été vu qu'à la première exécution réelle — une intégration continue qui
+n'a jamais tourné ne prouve rien.
+
+---
+
+## JE-014 — `wp_die()` choisit son gestionnaire selon la nature de la requête, et le filtre évident ne suffit pas
+
+**Date** : 15 octobre 2026 · **Contexte** : test de contrat sur
+`rcp_form_errors`.
+
+La dépendance termine le traitement d'une inscription par
+`wp_send_json_success()` ou `wp_send_json_error()`. Pour qu'un test puisse
+observer ce chemin au lieu de le subir, il faut intercepter l'arrêt. Deux
+surprises, dans l'ordre où elles se présentent.
+
+**Premièrement**, `wp_send_json()` n'appelle `wp_die()` — donc un gestionnaire
+filtrable — que si la requête est déclarée AJAX. Sinon elle appelle `die`
+directement, et aucun filtre ne peut l'intercepter. Il faut donc d'abord
+déclarer la requête AJAX (`add_filter( 'wp_doing_ajax', '__return_true' )`).
+
+**Deuxièmement**, `wp_die()` ne choisit pas son gestionnaire par un filtre mais
+par cinq, selon la nature de la requête : `wp_die_handler`,
+`wp_die_ajax_handler`, `wp_die_json_handler`, `wp_die_jsonp_handler`,
+`wp_die_xmlrpc_handler`. Brancher le seul `wp_die_handler` — le nom évident —
+laissait passer l'arrêt, et le symptôme était exactement celui de JE-007 : la
+suite s'arrêtait au milieu, en silence, et seul `bin/run-suite.sh` l'a signalé.
+
+**Conséquence** : `tests/Support/Request_Halted` déclare la requête AJAX et
+branche les cinq gestionnaires. Le chemin devient observable, et le processus
+survit.
+
+Ce constat valide `bin/run-suite.sh` après coup : c'est lui, et non PHPUnit, qui
+a dit qu'il manquait des tests. Sans lui, la suite aurait été lue comme un
+succès à huit tests.
+
+---
+
+## JE-015 — Plusieurs accroches de la dépendance n'existent qu'en administration
+
+**Date** : 15 octobre 2026 · **Contexte** : écriture de la sonde de capacités
+étendue (§5.2) au lot 1.
+
+La dépendance n'inclut ses fichiers d'administration que si `is_admin()`
+(`core/includes/class-restrict-content.php:247`). Deux des accroches du §5.1 y
+vivent : `rcp_metabox_fields_before` / `_after` et `rcp_save_post_meta`, portées
+par `rcp_render_meta_box()` et `rcp_save_meta_data()`
+(`core/includes/admin/metabox.php`). Les écrans de niveau d'adhésion sont dans
+le même cas.
+
+Une sonde naïve, qui vérifierait la présence de ces symboles à chaque requête,
+conclurait donc à leur absence sur **toute** requête de façade, et l'avis de
+E-04 annoncerait la perte d'une fonctionnalité intacte. Le défaut serait
+d'autant plus pénible qu'il ne se manifesterait jamais en administration, là où
+l'avis est lu.
+
+**Conséquence** : le catalogue de capacités déclare, pour chaque symbole, le
+contexte dans lequel la dépendance le charge, et le rapport distingue trois
+états au lieu de deux — présente, absente, **non observable sur cette requête**.
+Une fonctionnalité dont aucune capacité n'est observable est réputée
+disponible : affirmer la perte sur une absence d'information serait exactement
+l'erreur que E-05 proscrit, par un autre chemin.
+
+La suite `contract` charge explicitement ces fichiers d'administration et
+provoque les chemins : c'est le prix d'un contrat établi par l'exécution, et il
+est préférable à une lecture de source.
+
+---
+
+## JE-016 — Les positions du §5.1 tiennent en 4.0.5, à deux lignes près
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 1, vérification des positions
+amont contre la version réellement installée.
+
+Le §5.1 a été établi sur Restrict Content 4.0.4. La version publiée au moment du
+lot 1 est la 4.0.5. Relevé, fichier par fichier :
+
+| Accroche | 4.0.4 (cahier des charges) | 4.0.5 (constaté) |
+|---|---|---|
+| `rcp_user_can_access()` | 70 | 70 |
+| `rcp_member_can_access`, déconnecté | 101 | 101 |
+| `rcp_member_can_access`, connecté | 772, 777, 786, 791, 806 | identiques |
+| `rcp_member_can_access`, historique | 970, 975, 987 | identiques |
+| `rcp_get_term_restrictions` | 1002 | 1002 |
+| `rcp_form_errors` | 164 | 164 |
+| `rcp_errors()` | 19 | 19 |
+| Métadonnées de niveau | 26, 48, 69, 94 | identiques |
+| `rcp_metabox_fields_before` / `_after` | 77, 81 | identiques |
+| `rcp_save_post_meta` | **226** | **233** |
+| `rcp_user_can_access_term()` | **134** | **135** |
+| `rcp_manage_settings` | 53 | 53 |
+
+Aucun nom, aucune signature, aucun ordre d'application n'a changé. Deux
+positions ont glissé de sept et d'une ligne.
+
+C'est la démonstration de ce que le §5.1 affirmait sans preuve : **un numéro de
+ligne date une preuve, il ne constitue pas un contrat**. Les positions sont
+conservées dans le catalogue de capacités à titre de preuve datée, et c'est la
+suite `contract` — 36 tests, exécutés contre la version installée — qui tient le
+contrat.

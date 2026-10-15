@@ -3,10 +3,13 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 0** : les suites `unit` et `integration` sont peuplées ; les
-suites `contract`, `matching` et `access` sont déclarées et vides. Une suite
-vide sort en succès (JE-001) : elles ne sont donc pas encore déclarées comme
-jobs d'intégration continue, et leur verdict actuel ne vaut rien.
+**État au lot 1** : les suites `unit` (43 tests), `integration` (22 tests) et
+`contract` (36 tests) sont peuplées ; les suites `matching` et `access` sont
+déclarées et vides. Une suite vide sort en succès (JE-001) : ces deux-là ne sont
+donc pas encore déclarées comme jobs d'intégration continue, et leur verdict
+actuel ne vaut rien. La suite `contract` est exécutée par les jobs
+`contract-free` et `contract-pro` depuis le lot 1 ; seul le premier a tourné, le
+second attendant l'archive commerciale (V-10).
 
 ---
 
@@ -54,8 +57,11 @@ invocation fait échouer Patchwork avec « DefinedTooEarly ».
 | Outillage | Le `Makefile` ne référence aucun script inexistant, et l'aide de chaque cible décrit ce qu'elle exécute réellement (§12.2) |
 | Scanners | `bin/scan-secrets.sh` et `bin/scan-placeholders.sh` sont **exécutés**, pas relus : un scanner inerte passerait un test de lecture |
 
-Déjà peuplée : `RequirementsNoticeTest`, `MakefileTest`,
-`RepositoryHygieneTest`, `ScannersTest`, et la base commune `UnitTestCase`.
+Peuplée : `RequirementsNoticeTest`, `MakefileTest`, `RepositoryHygieneTest`,
+`ScannersTest`, et la base commune `UnitTestCase` au lot 0 ;
+`DependencyDiagnosisTest`, `CapabilityReportTest` et `CapabilityCatalogueTest`
+au lot 1 — les trois états du diagnostic de E-05, les trois états d'une capacité
+dont le « non observable » de JE-015, et l'intégrité du catalogue.
 
 ### 2.2 `integration` — le plugin dans un WordPress réel
 
@@ -71,7 +77,19 @@ Déjà peuplée : `RequirementsNoticeTest`, `MakefileTest`,
 | Non-mémorisation de la sonde | P-01 à P-04 : après amorçage, aucune option ni aucun transient n'a été écrit par le plugin ; puis l'option de branche de la dépendance est retournée, le plugin réamorcé, et l'avis de E-05 apparaît dès cette requête, sans réactivation |
 | Scénarios d'activation | Les huit scénarios du cahier des charges §11.7, dont la bascule de branche en cours de vie |
 
-Déjà peuplée : `BootTest`.
+Peuplée : `BootTest` au lot 0, étendu au lot 1 par l'établissement de SEC-16 à
+l'exécution ; `ProbePersistenceTest` (P-01 à P-04) et
+`CapabilityStatusPageTest` au lot 1.
+
+**Ce qu'un processus unique ne peut pas établir** : PHP ne retire pas une
+fonction déjà définie, donc la disparition de l'interface amont entre deux
+requêtes n'est pas reproductible ici. Ce qui est établi l'est entièrement :
+rien n'est écrit, à aucun amorçage ; le contrôle est accroché à `plugins_loaded`
+en priorité 20 ; chaque amorçage produit un constat neuf ; l'option amont de
+branche ne pilote pas le verdict ; et l'avis de E-05 nomme la cause et l'action
+de retour. La bascule elle-même est établie par la suite `contract`, qui exécute
+le mécanisme amont, et en recette (cahier des charges §11.7). Écrire que la
+suite `integration` établit la bascule à elle seule serait faux.
 
 ### 2.3 `contract` — les accroches existent et se déclenchent
 
@@ -112,6 +130,7 @@ d'échec doit dire « l'amont a changé », et non « nous ne savions pas ».
 | Métadonnées de niveau | Écrire puis relire une métadonnée de niveau | `core/includes/levels/meta.php:26, 69, 94` |
 | `rcp_metabox_fields_before` / `_after`, `rcp_save_post_meta` | Rendre et enregistrer la boîte de restriction | `core/includes/admin/metabox.php:77, 81, 226` |
 | Branche chargée | **Premier test de la suite.** Constater la présence des fonctions `rcp_*` du §5.1 et échouer avec un message nommant la branche historique si elles manquent | JE-003 |
+| Catalogue contre réalité | Toutes les capacités déclarées au catalogue sont en mémoire ; et hors administration, aucune capacité de contexte d'administration n'est rapportée absente | JE-015 |
 | Capacité `rcp_manage_settings` | Vérifier qu'elle est accordée à l'administrateur | `core/includes/class-rcp-capabilities.php:53` |
 | Bascule de branche | Retourner `restrict_content_chosen_version`, réamorcer, constater que la sonde conclut à l'absence — et qu'elle n'avait rien mémorisé | JE-003, P-01 à P-04 |
 
@@ -129,6 +148,16 @@ que si un secret de dépôt met l'archive commerciale à disposition, en
 déclencheur quotidien exécute la suite contre la dernière version publiée de la
 variante gratuite : une rupture amont devient ainsi un incident diagnosticable
 avant les utilisateurs.
+
+**Et aucun test n'est ignoré pour autant.** Le mécanisme de bascule de branche
+n'existe que dans la variante gratuite : plutôt que de sauter les tests qui le
+concernent quand la variante commerciale est chargée — ce que le §4 interdit —,
+ces tests **affirment, pour chaque variante, ce qui doit être vrai**. Contre la
+gratuite : le mécanisme existe et retourne l'option dans les deux sens, sous
+capacité et sous nonce. Contre la commerciale : il est absent, et l'option de
+branche n'apparaît pas du fait de la dépendance. La variante est détectée par
+capacité, jamais par nom de plugin. C'est ainsi que la suite répond au point
+ouvert V-10 au lieu de l'esquiver.
 
 ### 2.4 `matching` — le moteur et la résolution d'adresse
 

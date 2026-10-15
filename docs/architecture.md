@@ -1,9 +1,9 @@
 # Architecture
 
-Ce document décrit la forme prévue du code. Au moment où il est écrit, seul le
-lot 0 est livré : `src/Plugin.php` et `src/Admin/Requirements_Notice.php`. Tout
-le reste est une cible, pas un état. Les cases non livrées sont signalées comme
-telles dans l'arborescence du §3.
+Ce document décrit la forme prévue du code. Au moment où il est écrit, les
+lots 0 et 1 sont livrés : l'amorçage conditionnel, la sonde de capacités et
+l'écran d'état. Tout le reste est une cible, pas un état. Les cases non livrées
+sont signalées comme telles dans l'arborescence du §3.
 
 Référence : cahier des charges §4 (règles de décision), §5 (intégration),
 §6 (modèle de données), §8 (points d'extension).
@@ -83,6 +83,13 @@ Un dossier par domaine, cohésion haute, couplage bas. Les fichiers marqués
 src/
 ├── Plugin.php                          livré — sonde et enregistrement conditionnel
 │
+├── Domain/                             décision pure — prérequis et capacités
+│   ├── Requirements.php                livré — verdict sur les prérequis
+│   ├── Dependency_Diagnosis.php        livré — absente | branche historique | utilisable (E-05)
+│   ├── Capability.php                  livré — objet de valeur : symbole, fonctionnalité, contexte, preuve
+│   ├── Capability_Catalogue.php        livré — les capacités attendues, en donnée
+│   └── Capability_Report.php           livré — présente | absente | non observable
+│
 ├── Address/                            décision pure — adresse du visiteur
 │   ├── Client_Address.php              objet de valeur : adresse + provenance
 │   ├── Address_Source.php              énumération : connexion | en-tête
@@ -115,14 +122,17 @@ src/
 │   └── Server_Environment.php          seul point du plugin qui lise $_SERVER
 │
 ├── Integration/                        application — branchements sur la dépendance
-│   ├── Capability_Probe.php            sonde du §5.2, jamais mémorisée (P-01…P-04)
+│   ├── Capability_Probe.php            livré — sonde du §5.2, jamais mémorisée (P-01…P-04)
 │   ├── Content_Access.php              rcp_member_can_access
 │   ├── Term_Access.php                 rcp_get_term_restrictions, garde-fous du §5.1.1
 │   ├── Registration_Guard.php          rcp_form_errors
 │   └── Cache_Guard.php                 SEC-14, non-cachabilité d'une réponse élargie
 │
 ├── Admin/                              application — écrans
-│   ├── Requirements_Notice.php         livré
+│   ├── Requirements_Notice.php         livré — avis de prérequis, cause et action de retour
+│   ├── Capability_Status_Page.php      livré — écran d'état des capacités, lecture seule
+│   ├── Capability_Labels.php           livré — libellés des fonctionnalités et des états
+│   ├── Dependency_Labels.php           livré — libellés de E-05, cause constatée et retour
 │   ├── Settings_Page.php               FNC-24, FNC-29
 │   ├── Level_Field.php                 FNC-25
 │   ├── Post_Metabox.php                FNC-26
@@ -206,6 +216,19 @@ comportement, et il faut donc dire pourquoi elle est écrite ainsi.
 | Elle n'écrit **rien** : ni option, ni métadonnée, ni transient, ni fichier | Un résultat persisté serait faux dès la première bascule, et faux silencieusement : le plugin continuerait d'enregistrer ses filtres sur une API absente, ce qui produit une erreur fatale au premier appel |
 | Elle ne conclut **rien** au crochet d'activation | L'environnement d'activation ne préjuge pas de l'environnement des requêtes suivantes |
 | Elle mémorise en revanche son résultat **dans la requête** | La frontière est la requête, et elle est exactement à sa place : une seule conclusion par requête, transportée en mémoire |
+
+La mémorisation est portée par l'**instance** et non par une variable statique,
+et ce choix est délibéré : un cache statique serait indiscernable d'un cache de
+requête dans le code, mais il rendrait P-03 invérifiable — deux amorçages dans
+un même processus liraient la même conclusion, et le test qui exige un constat
+neuf à chaque amorçage ne pourrait plus échouer. Une propriété qu'aucun test ne
+peut contredire n'est pas une propriété.
+
+Le contexte d'administration est en outre **reçu en argument** plutôt que lu
+dans la sonde : `is_admin()` est une information de requête, et la passer
+explicitement rend la sonde exerçable dans les deux contextes sans bricoler
+l'état global de WordPress — ce dont la suite `contract` se sert pour établir
+JE-015 dans les deux sens.
 
 La tentation est réelle : sonder à chaque requête ressemble à du gaspillage. Le
 coût réel est une poignée d'appels à `function_exists()`, et le prix de

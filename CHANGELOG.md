@@ -5,6 +5,71 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 1 : preuve des accroches. Aucune fonctionnalité de restriction n'est encore
+livrée — ce lot établit que la dépendance offre bien les points d'accroche dont
+les lots suivants auront besoin, et rend visible ce que le plugin constate.
+
+### Ajouté
+
+- Sonde de capacités étendue aux quatorze symboles du cahier des charges §5.1,
+  déclarés en donnée avec, pour chacun, la fonctionnalité qui en dépend, la
+  preuve amont qui l'a établie et le contexte dans lequel la dépendance le
+  charge (`src/Domain/Capability_Catalogue.php`).
+- Trois états de capacité et non deux : présente, absente, **non observable sur
+  cette requête**. Plusieurs accroches amont n'existent qu'en administration ;
+  les compter absentes sur une requête de façade annoncerait la perte d'une
+  fonctionnalité intacte (JE-015).
+- Diagnostic de dépendance à trois états — absente, active sur sa base de code
+  historique, utilisable — et avis d'administration qui nomme la cause
+  **constatée** plus l'action de retour, par capacité et sans jamais lire
+  l'option amont de branche (E-05, B-02).
+- Écran d'état des capacités, en lecture seule, sous l'outillage de WordPress et
+  gardé par `manage_options` : il reste accessible quand la dépendance est
+  absente ou revenue à sa branche historique, c'est-à-dire quand il sert. Il
+  cite l'option amont de branche en disant qu'elle n'entre pas dans la décision.
+- Suite `contract` peuplée — 36 tests contre Restrict Content 4.0.5, tous
+  établis par l'exécution : les trois chemins d'application de
+  `rcp_member_can_access`, l'absence d'accroche sur la décision de terme et le
+  mécanisme de substitution du §5.1.1, `rcp_form_errors` et le retour du message
+  par le canal JSON de la dépendance, les accroches et métadonnées de niveau,
+  celles de la boîte de restriction, la capacité `rcp_manage_settings`, et la
+  réversibilité de la bascule de branche sous capacité et sous nonce.
+- Les tests dépendants de la variante **affirment, pour chacune, ce qui doit
+  être vrai** plutôt que d'être ignorés : c'est ainsi que la suite répondra au
+  point ouvert V-10 dès qu'elle tournera contre la variante commerciale.
+- P-01 à P-04 établis dans la suite `integration` : aucune option ni aucun
+  transient écrit à l'amorçage, pas davantage au second ; contrôle accroché à
+  `plugins_loaded` en priorité 20 ; constat neuf à chaque amorçage ; verdict
+  indépendant de l'option amont.
+- SEC-16 établie à l'exécution, et non plus seulement à la relecture : un
+  bouchon `pre_http_request` échoue à la moindre tentative pendant l'amorçage et
+  le rendu des avis.
+- Jobs d'intégration continue `contract-free` et `contract-pro`, le second
+  conditionné à la mise à disposition de l'archive commerciale par un secret de
+  dépôt et en `continue-on-error`, pour ne pas bloquer une contribution externe.
+
+- `.coverage-baseline` passe de 0 à 96,89 %, mesuré sur les trois suites
+  peuplées : `src/Domain/` est couvert à 100 %, comme le cahier des charges
+  §11.6 l'exige du code pur. La référence ne descend pas d'elle-même — un lot
+  qui la ferait baisser doit l'abaisser sciemment, et le `git diff` le montre.
+
+### Corrigé
+
+- `bin/install-wp-tests.sh` traduisait `WP_VERSION=latest` de deux façons
+  incompatibles : dernière version **publiée** pour le cœur, `trunk` pour la
+  bibliothèque de tests. Les suites échouaient à l'amorçage sur un symbole que
+  seule la branche de développement définit, avec un message qui ne nommait pas
+  sa cause. `latest` est désormais résolu en numéro de version, le même des deux
+  côtés, et une version précédemment installée est remplacée (JE-013).
+
+### Documentation
+
+- JE-013 à JE-016 : la divergence cœur / bibliothèque de tests, les cinq
+  gestionnaires de `wp_die()` qu'il faut brancher pour observer un `die()` amont,
+  les accroches qui n'existent qu'en administration, et le relevé des positions
+  du §5.1 contre la 4.0.5 — deux lignes ont glissé, aucun nom ni aucune
+  signature n'a changé.
+
 ## [0.1.0-dev] — 2026-09-22
 
 Lot 0 : outillage, amorçage et contrôle des prérequis. Aucune fonctionnalité de

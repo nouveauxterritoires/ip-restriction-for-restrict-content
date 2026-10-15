@@ -520,8 +520,16 @@ même noyau, et c'est ce que la suite `contract` surveille.
 Deux divergences de position méritent d'être notées : `rcp_form_errors` est
 16 lignes plus bas dans la variante gratuite, et `rcp_get_term_restrictions`
 4 lignes plus bas. Aucune ne change de nom, de signature ni d'ordre
-d'application. C'est le rappel qu'un numéro de ligne datte une **preuve**, et ne
+d'application. C'est le rappel qu'un numéro de ligne date une **preuve**, et ne
 constitue jamais un contrat : le contrat, c'est la suite `contract`.
+
+**Vérifié à nouveau au lot 1, contre Restrict Content 4.0.5**, la version
+publiée au moment de l'écriture de la suite `contract` : aucun nom, aucune
+signature, aucun ordre d'application n'a changé ; deux positions ont glissé —
+`rcp_save_post_meta` de 226 à 233, `rcp_user_can_access_term()` de 134 à 135.
+Le relevé complet est en JE-016. La démonstration est faite : les positions de
+ce tableau datent une preuve, et les 36 tests de la suite `contract` tiennent le
+contrat.
 
 **Le commentaire qui confirme l'intention amont.** À
 `core/includes/member-functions.php:100` — à la même ligne dans les deux
@@ -580,12 +588,33 @@ découvre autrement à la moitié du lot 2.
 
 ### §5.2 Détection par capacité
 
-La sonde est déjà livrée au lot 0 : `Plugin::from_environment()` vérifie la
-présence effective de `rcp_get_membership_levels()`, jamais un numéro de version
-ni un nom de plugin (`src/Plugin.php`). Elle sera étendue aux capacités du §5.1
-au lot 1 : pour chaque accroche du tableau, la sonde vérifie ce qui est
-vérifiable sans exécuter la requête — existence de la fonction, et pour un
-filtre, l'existence de la fonction qui l'applique.
+La sonde est livrée au lot 0 et **étendue au lot 1**. Elle vérifie la présence
+effective des symboles, jamais un numéro de version ni un nom de plugin
+(`src/Integration/Capability_Probe.php`). Pour chaque accroche du tableau du
+§5.1, elle vérifie ce qui est vérifiable sans exécuter la requête — existence de
+la fonction, et pour un filtre, l'existence de la fonction qui l'applique.
+
+Le catalogue des capacités attendues est une donnée
+(`src/Domain/Capability_Catalogue.php`), et chaque entrée porte trois choses en
+plus du symbole : la fonctionnalité de ce plugin qui en dépend — c'est ce qui
+rend E-04 applicable —, la preuve amont qui l'a établie, et le **contexte** dans
+lequel la dépendance charge le symbole.
+
+Ce dernier point n'est pas une subtilité. La dépendance n'inclut ses fichiers
+d'administration que si `is_admin()`
+(`core/includes/class-restrict-content.php:247`), et deux accroches du §5.1 y
+vivent. Une sonde qui les chercherait sur une requête de façade concluerait à
+leur absence, et l'avis de E-04 annoncerait la perte d'une fonctionnalité
+intacte (JE-015). Le rapport distingue donc trois états et non deux : présente,
+absente, **non observable sur cette requête**. Une fonctionnalité dont aucune
+capacité n'est observable est réputée disponible — affirmer une perte sur une
+absence d'information serait l'erreur de E-05 par un autre chemin.
+
+L'écran d'état des capacités (`src/Admin/Capability_Status_Page.php`) expose ce
+rapport en lecture seule, capacité par capacité, avec sa preuve amont. Il est
+rangé sous l'outillage de WordPress et gardé par `manage_options`, et non sous
+le menu de la dépendance : c'est quand celle-ci est absente ou revenue à sa
+branche historique que l'écran sert, et son menu n'existe alors pas.
 
 Un filtre ne se sonde pas par introspection : on ne peut pas savoir qu'un
 `apply_filters` existe dans un corps de fonction. C'est pourquoi la suite
@@ -912,11 +941,27 @@ d'erreur PHP, les écrans se rendent, les réglages survivent à un aller-retour
 d'enregistrement, aucune requête HTTP sortante n'est tentée. Déjà peuplée par
 `BootTest`.
 
-C'est aussi la suite qui établit P-01 à P-04 : après amorçage, le plugin n'a
-écrit **aucune** option et **aucun** transient ; puis l'option de branche de la
-dépendance est retournée, le plugin est réamorcé, et l'avis de E-05 apparaît dès
-cette requête, sans réactivation. Ce test est la seule chose qui empêche
-quelqu'un d'« optimiser » la sonde en la mémorisant (§5.2.1).
+C'est aussi la suite qui établit P-01 à P-04, livrés au lot 1
+(`tests/integration/ProbePersistenceTest.php`) : après amorçage, le plugin n'a
+écrit **aucune** option et **aucun** transient, pas davantage au second
+amorçage ; le contrôle est bien accroché à `plugins_loaded` en priorité 20 ;
+chaque amorçage produit un constat neuf ; l'option de branche de la dépendance
+peut être retournée sans que le verdict du plugin en dépende — il lit des
+capacités, pas une option (B-02) ; et un diagnostic de branche historique
+produit bien l'avis de E-05, avec sa cause et son action de retour.
+
+**Ce qu'un processus unique ne peut pas établir** : PHP ne permet pas de retirer
+une fonction déjà définie. La disparition effective de l'interface amont entre
+deux requêtes n'est donc pas reproductible dans une suite. Elle est établie
+autrement, et de deux côtés : la suite `contract` exécute le mécanisme de
+bascule amont lui-même et constate qu'il retourne l'option dans les deux sens,
+sous capacité et sous nonce (`tests/contract/BranchSwitchContractTest.php`) ; et
+la recette du §11.7 rejoue la bascule sur le site Docker, sur deux requêtes
+réelles. Dire que la suite l'établit seule serait faux, et c'est exactement le
+genre d'affirmation que ce document existe pour empêcher.
+
+Ces tests sont la seule chose qui empêche quelqu'un d'« optimiser » la sonde en
+la mémorisant (§5.2.1).
 
 **`contract`** — une accroche par test, établie **par l'exécution** et non par
 introspection.
@@ -998,8 +1043,9 @@ intégration continue et couvert par `tests/unit/Tooling/ScannersTest.php`.
 
 Une précision qui compte, tirée de JE-001 : **une suite vide sort en succès**.
 Un job qui exécute une suite non peuplée est donc un faux signal. Les suites
-`contract`, `matching` et `access` ne sont déclarées dans l'intégration continue
-qu'au lot où leurs premiers tests les peuplent.
+`matching` et `access` ne seront déclarées dans l'intégration continue qu'au lot
+où leurs premiers tests les peupleront ; la suite `contract` l'est depuis le
+lot 1, par les jobs `contract-free` et `contract-pro`.
 
 ### §11.6 Seuils de couverture
 
@@ -1088,7 +1134,7 @@ si son attestation a tourné.
 | Lot | Contenu | Atteste |
 |---|---|---|
 | **0 — livré** | Outillage reproductible, amorçage conditionnel, contrôle des prérequis, avis d'administration, cinq suites déclarées, scanners, intégration continue | `make test-unit` et `make test-integration` verts ; `bin/scan-secrets.sh` et `bin/scan-placeholders.sh` verts ; `make lint` et `make stan` verts |
-| **1 — preuve des accroches** | Suite `contract` peuplée : contrôle de la branche chargée (§1.1), puis une accroche du §5.1 par test, contre les deux variantes. Sonde de capacités étendue et non mémorisée (§5.2.1), avec le libellé d'avis de E-05. Écran d'état des capacités | La suite `contract` passe contre les deux variantes ; le scénario de bascule du §11.7 passe dans la suite `integration`. Les jobs `contract-free` et `contract-pro` sont déclarés. V-10, V-11 et V-13 sont relevés |
+| **1 — livré contre la variante gratuite** | Suite `contract` peuplée : contrôle de la branche chargée (§1.1), puis une accroche du §5.1 par test, contre les deux variantes. Sonde de capacités étendue et non mémorisée (§5.2.1), avec le libellé d'avis de E-05. Écran d'état des capacités | 36 tests `contract` passent contre Restrict Content 4.0.5 ; P-01 à P-04 sont établis dans la suite `integration` autant qu'un processus unique le permet (§11.2) ; les jobs `contract-free` et `contract-pro` sont déclarés. **Reste** : exécuter la suite contre la variante commerciale, ce qui lèvera V-10 ; V-11 demande un site 2.x provisionné ; V-13 est surveillé par un test |
 | **2 — moteur de correspondance** | Grammaire, analyseur, normalisation des quatre formes, IPv4 et IPv6, décision sur un ensemble. Aucun branchement WordPress | Suite `matching` : chaque format de FNC-13 à FNC-18 et chaque contrainte de G-01 à G-07 ont leur test. 100 % de lignes et de branches sur le répertoire du moteur |
 | **3 — résolution de l'adresse** | `Client_Address_Resolver`, proxys de confiance, lecture de droite à gauche, source de l'adresse | Suite `matching` : les onze scénarios du §11.3 passent. SEC-07 à SEC-10 et SEC-12 couvertes |
 | **4 — réglages globaux** | Écran de réglages, les deux listes, message d'erreur, proxys, validation à l'écriture, signalement des entrées rejetées, écran de diagnostic FNC-29 | Suites `integration` et `access` : aller-retour d'enregistrement, nonce et capacité exigés, entrée rejetée signalée. SEC-01, SEC-03, SEC-11 couvertes |
@@ -1187,10 +1233,10 @@ section est ce qui empêche de présenter une hypothèse comme un acquis.
 | **V-07** | ~~Le filtre `rcp_member_can_access` est-il appliqué à l'identique dans la variante **gratuite** ?~~ | **Levé le 22 septembre 2026.** La source de la variante gratuite (RC 4.0.4) est lisible en local : le commentaire est à `core/includes/member-functions.php:100` et le `apply_filters` à la ligne 101, aux mêmes positions que dans la variante commerciale. Les cinq applications du chemin connecté et les trois du chemin historique sont également aux mêmes lignes (§5.1) | Le test de contrat reste, mais il n'établit plus une inconnue : il **surveille** une propriété établie. La lecture prouve que le code est là ; seule l'exécution prouve qu'il est atteint sur le chemin qui nous intéresse |
 | **V-08** | Interaction avec les caches de pages et les CDN | Rien dans la documentation amont | Au lot 5 : servir un contenu restreint à une adresse autorisée derrière un cache de pages, puis le redemander depuis une adresse non autorisée. SEC-14 pose l'attendu ; la recette établit que le marquage de non-cachabilité est bien honoré par les caches courants |
 | **V-09** | Absence de chevauchement avec les redirections personnalisées | La recherche conclut que l'add-on de redirection ne traite que la redirection après connexion et après inscription, par niveau d'adhésion | Sans objet pour ce plugin : les deux périmètres sont disjoints, et §0.2 le pose en hors-périmètre |
-| **V-10** | Quelle valeur prend `restrict_content_chosen_version` lorsque **Restrict Content Pro** est installé à la place de la variante gratuite ? Le mécanisme de routage est-il seulement atteint ? | **Toujours ouvert.** `RC_Requirements_Check` et `rc_process_legacy_switch()` sont dans `restrictcontent.php`, fichier principal de la variante **gratuite**. Le checkout commercial v3.5.51 n'a ni ce fichier ni ce mécanisme, ce qui suggère qu'il ne s'applique pas — mais l'absence d'un fichier dans un checkout n'établit pas l'absence du comportement sur un site où les deux plugins se sont succédé | Lot 1, `make test-contract-pro` : relever la valeur de l'option et la présence des fonctions du §5.1. Puis un scénario de succession : installer la gratuite, la remplacer par la commerciale, et constater la valeur retenue |
-| **V-11** | Lors d'une mise à jour depuis une version 2.x historique, l'option est-elle écrite rétroactivement, et le site peut-il en sortir ? | **Partiellement levé.** Le code établit que la valeur enregistrée prime à chaque amorçage (`restrictcontent.php:189-199`) et que la sortie est possible par la bascule de V-12 — donc le site n'y reste pas « indéfiniment » comme on le craignait. Reste inconnu : le comportement de la **première** mise à jour depuis une 2.x, et sur quelle valeur l'option est alors écrite | Lot 1 : provisionner un site portant `rc_settings` et une méta `rcp_user_level`, mettre à jour, relever la valeur retenue |
+| **V-10** | Quelle valeur prend `restrict_content_chosen_version` lorsque **Restrict Content Pro** est installé à la place de la variante gratuite ? Le mécanisme de routage est-il seulement atteint ? | **Instrumenté au lot 1, pas encore relevé.** `RC_Requirements_Check` et `rc_process_legacy_switch()` sont dans `restrictcontent.php`, fichier principal de la variante **gratuite**. Le checkout commercial v3.5.51 n'a ni ce fichier ni ce mécanisme, ce qui suggère qu'il ne s'applique pas — mais l'absence d'un fichier dans un checkout n'établit pas l'absence du comportement | `tests/contract/BranchSwitchContractTest.php` affirme, pour chaque variante, ce qui doit être vrai : contre la gratuite, que le mécanisme existe et retourne l'option dans les deux sens ; contre la commerciale, qu'il est absent et que l'option de branche n'apparaît pas du fait de la dépendance. Les deux affirmations sont écrites et la première est vérifiée ; la seconde attend une exécution de `make test-contract-pro`, donc l'archive commerciale. Aucun test n'est ignoré : c'est la même suite qui conclut, selon la variante qu'elle constate |
+| **V-11** | Lors d'une mise à jour depuis une version 2.x historique, l'option est-elle écrite rétroactivement, et le site peut-il en sortir ? | **Partiellement levé, et inchangé au lot 1.** Le code établit que la valeur enregistrée prime à chaque amorçage (`restrictcontent.php:189-199`), et le lot 1 établit **par exécution** que la sortie est possible dans les deux sens, sous capacité et sous nonce (`BranchSwitchContractTest`) — le site n'y reste donc pas « indéfiniment ». Reste inconnu : le comportement de la **première** mise à jour depuis une 2.x, et sur quelle valeur l'option est alors écrite | Provisionner un site portant `rc_settings` et une méta `rcp_user_level`, mettre à jour, relever la valeur retenue. Rien dans le code de ce plugin n'en dépend : il ne lit pas cette option (B-02, et un test d'intégration l'établit) |
 | **V-12** | ~~Existe-t-il un chemin d'interface permettant de basculer d'une branche à l'autre ?~~ | **Levé le 22 septembre 2026, et la réponse va plus loin que la question.** Oui : `rc_process_legacy_switch()` (`restrictcontent.php:676`), gestionnaire AJAX enregistré sur `wp_ajax_rc_process_legacy_switch` (ligne 731), protégé par `manage_options` (ligne 680) et le nonce `rc_process_legacy_nonce` (ligne 681), bascule l'option **dans les deux sens** (lignes 695 et 706). Le choix de branche est donc réversible à tout moment, et non figé à la première activation | Conséquences portées en exigences : B-04 (§1.1), P-01 à P-04 (§5.2.1), E-05 (§5.3), et le scénario de bascule du §11.7 |
-| **V-13** | Le défaut SQL de `restrict_content_check_posts_for_shortcode()` a-t-il été signalé ou corrigé après la 4.0.4 ? | **Toujours ouvert**, mais mieux établi : le défaut est vérifié dans la source gratuite elle-même — déclaration à `restrictcontent.php:243`, quatre `CONTAINS` fautifs aux lignes 251-254 (JE-003). Ce qu'on ignore est ce qu'en font les versions ultérieures | Le déclencheur quotidien de la suite `contract` s'exécute contre la dernière version publiée : un changement de routage s'y manifestera. Aucun code de ce plugin ne dépend de ce comportement (B-03) |
+| **V-13** | Le défaut SQL de `restrict_content_check_posts_for_shortcode()` a-t-il été signalé ou corrigé après la 4.0.4 ? | **Toujours ouvert, et désormais surveillé.** Le défaut est vérifié dans la source gratuite elle-même — déclaration à `restrictcontent.php:243`, `CONTAINS` fautifs aux lignes suivantes (JE-003) — et il est **toujours présent en 4.0.5** : l'erreur SQL s'affiche à chaque amorçage de la suite. Ce qu'on ignore est ce qu'en feront les versions ultérieures | `BranchSwitchContractTest::test_the_upstream_routing_defect_is_still_present()` échouera le jour où le défaut sera corrigé, et le déclencheur quotidien de la suite `contract` s'exécute contre la dernière version publiée. Aucun code de ce plugin n'en dépend (B-03) |
 
 ---
 
