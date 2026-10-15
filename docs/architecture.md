@@ -1,10 +1,10 @@
 # Architecture
 
 Ce document décrit la forme prévue du code. Au moment où il est écrit, les
-lots 0 à 6 sont livrés : l'amorçage conditionnel, la sonde de capacités,
+lots 0 à 7 sont livrés : l'amorçage conditionnel, la sonde de capacités,
 l'écran d'état, le moteur de correspondance, la résolution de l'adresse du
-visiteur, les réglages globaux avec leur écran, l'autorisation globale et le
-blocage d'inscription, tous deux branchés sur la dépendance. Tout le reste est une cible, pas un état. Les cases non livrées
+visiteur, les réglages globaux avec leur écran, l'autorisation globale, le
+blocage d'inscription, et la portée par niveau d'adhésion. Tout le reste est une cible, pas un état. Les cases non livrées
 sont signalées comme telles dans l'arborescence du §3.
 
 Référence : cahier des charges §4 (règles de décision), §5 (intégration),
@@ -109,7 +109,7 @@ src/
 │
 ├── Policy/                             décision pure — les portées
 │   ├── Scope.php                       livré — énumération : globale | niveau | contenu
-│   ├── Access_Policy.php               livré — FNC-01, FNC-05 ; non-transitivité au lot 7
+│   ├── Access_Policy.php               livré — FNC-01, FNC-02, FNC-04, FNC-05, FNC-06
 │   ├── Access_Decision.php             livré — accordé | non traité + portée et règle responsables
 │   ├── Registration_Policy.php         livré — FNC-07 à FNC-09, FNC-12
 │   └── Registration_Decision.php       livré — bloqué + règle responsable
@@ -138,7 +138,7 @@ src/
 │   ├── Settings_Page.php               livré — FNC-24, FNC-27, FNC-29, SEC-01, SEC-03
 │   ├── Rejection_Notice.php            livré — FNC-22, A-03, SEC-11
 │   ├── Rejection_Labels.php            livré — un libellé par motif de refus
-│   ├── Level_Field.php                 FNC-25
+│   ├── Level_Field.php                 livré — FNC-25, et le nettoyage de JE-025
 │   └── Post_Metabox.php                FNC-26
 │
 └── Support/
@@ -172,6 +172,16 @@ en cas d'erreur. Aucun accesseur de `Settings`, aucun accesseur de
 `Validated_Settings` n'est donc paramétré par un nom de liste, et un test de la
 suite `unit` inspecte l'interface publique pour l'établir. L'écran les rend par
 deux appels distincts, avec deux champs nommés séparément.
+
+**La non-transitivité de FNC-04 tient à ce que la politique ne reçoit pas.**
+`Access_Policy::decide()` ne voit que les listes des niveaux qui restreignent le
+contenu demandé : une autorisation posée sur un autre niveau n'est pas même
+consultée. Ce n'est pas une comparaison qui échoue, c'est une liste qui n'entre
+pas dans le calcul. L'implémentation naïve — passer toutes les listes de niveau
+et laisser la politique trancher — violerait l'exigence silencieusement, et
+transformerait chaque autorisation de niveau en autorisation globale. Le choix
+des listes applicables est donc fait par la couche d'application, qui est la
+seule à savoir ce qui restreint le contenu.
 
 **L'adresse du visiteur est résolue une fois par requête.** La mémorisation est
 portée par l'instance du branchement, et l'instance vit le temps d'une requête :

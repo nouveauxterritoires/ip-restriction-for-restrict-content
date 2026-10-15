@@ -900,3 +900,37 @@ processus de test, puisque le problème y appartient.
 La morale rejoint celle du §6 de `docs/tests.md` — « ne jamais dépendre de
 l'état laissé par un test précédent ». Ici l'état n'était pas laissé par nous :
 il était laissé **dans** la dépendance, ce qui est plus difficile à voir.
+
+---
+
+## JE-025 — La suppression d'un niveau d'adhésion ne supprime pas ses métadonnées
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 7, portée par niveau d'adhésion.
+
+ADR-0004 a choisi de ranger la liste d'autorisation d'un niveau en **métadonnée
+de niveau**, par l'interface de la dépendance, et en a tiré un argument :
+« la réutiliser fait que la suppression d'un niveau emporte son réglage, sans
+code de nettoyage ».
+
+**C'est faux sur cette version.** Le test a été écrit pour constater cette
+propriété, et il a échoué : après `rcp_delete_membership_level()`, la
+métadonnée est toujours lisible. `rcp_delete_membership_level()` supprime la
+ligne du niveau par sa classe de requête puis déclenche `rcp_remove_level`
+(`core/includes/membership-levels/membership-level-functions.php`) ; la
+suppression en cascade des métadonnées n'a pas lieu.
+
+**Conséquence.** Le nettoyage est fait par le plugin, sur l'action
+`rcp_remove_level`. Ce n'est pas qu'une question de propreté : les identifiants
+de niveau viennent d'une table auto-incrémentée, et un réglage orphelin
+accorderait un accès au prochain niveau à porter le même identifiant — une
+fuite d'accès silencieuse, de celles que le §4.6 classe comme les plus graves.
+
+**Le choix de stockage reste le bon**, et pour ses autres raisons : l'interface
+existe, aucune table dédiée n'est nécessaire (ADR-0003), et la métadonnée suit
+le niveau dans les exports. C'est l'argument du nettoyage automatique qui
+tombe, et ADR-0004 le dit maintenant.
+
+Deux tests figent le constat : l'un vérifie que **notre** nettoyage fonctionne,
+l'autre que la dépendance seule laisse bien la métadonnée. Le jour où l'amont
+nettoiera, le second échouera — et ce sera une bonne nouvelle, qui permettra de
+retirer du code.

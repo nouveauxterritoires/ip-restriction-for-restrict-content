@@ -3,8 +3,8 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 6** : les cinq suites sont peuplées — `unit` (79 tests),
-`integration` (26), `contract` (36), `matching` (134) et `access` (59). Chacune
+**État au lot 7** : les cinq suites sont peuplées — `unit` (79 tests),
+`integration` (26), `contract` (36), `matching` (140) et `access` (81). Chacune
 a son job d'intégration continue, et la suite `contract` est exécutée par les
 jobs `contract-free` et `contract-pro` : **les deux ont tourné et sont verts**
 depuis le 15 octobre 2026, ce qui a levé le point ouvert V-10.
@@ -215,9 +215,9 @@ qu'ici serait mentir sur ce qu'ils établissent.
 
 ### 2.5 `access` — le comportement observable
 
-**Peuplée aux lots 4 à 6** : `SettingsScreenTest`, `RejectionNoticeTest`,
-`ContentAccessTest`, `ExtensionPointsTest` et `RegistrationBlockTest` —
-59 tests. Les tests du lot 5
+**Peuplée aux lots 4 à 7** : `SettingsScreenTest`, `RejectionNoticeTest`,
+`ContentAccessTest`, `ExtensionPointsTest`, `RegistrationBlockTest` et
+`LevelScopeTest` — 81 tests. Les tests du lot 5
 passent par `rcp_user_can_access()`, la fonction de la dépendance, et non par la
 politique interne : ce qui compte est le comportement observable, moteur et
 branchement compris. C'est aussi la suite qui a levé V-01. Ils portent ce qui garde l'écriture des réglages, parce qu'un écran
@@ -234,8 +234,8 @@ réellement restreints :
 |---|---|
 | Portée globale | Un visiteur déconnecté, depuis une adresse autorisée globalement, lit un contenu restreint à n'importe quel niveau |
 | Portée par niveau | Autorisation sur « Argent » : le contenu réservé à « Argent » est lisible |
-| Non-transitivité | **Le test central.** Autorisation sur « Argent », contenu réservé à « Or » : refusé |
-| Cumul | Une seule portée satisfaite suffit ; deux portées satisfaites n'ont pas d'effet supplémentaire |
+| Non-transitivité | **Le test central, livré au lot 7.** Autorisation sur « Argent », contenu réservé à « Or » : refusé. Et la contrepartie : la même autorisation ouvre bien les contenus d'« Argent » |
+| Cumul | **Livré au lot 7**, premier lot où l'exigence est vérifiable : une seule portée satisfaite suffit, deux n'ont pas d'effet supplémentaire, et la portée rapportée est la plus large — c'est elle qui explique l'accès |
 | Portée par contenu | Autorisation sur le contenu A : A est lisible, B ne l'est pas |
 | Adhésion expirée | **V-01, levé au lot 5** : l'autorisation l'emporte sur une adhésion expirée, établi avec un client et une adhésion au statut `expired` (JE-022). Le volet « autorisation posée sur le niveau » se jouera au lot 7 |
 | Blocage d'inscription | La soumission est rejetée, et le message apparaît par le canal de la dépendance |
@@ -300,13 +300,22 @@ couvert par `tests/unit/Tooling/ScannersTest.php`, qui **exécute** le scanner.
 | `src/Address/`, `src/Rule/`, `src/Policy/` | 100 % des lignes et des branches | `bin/check-coverage.sh` pour les lignes, `bin/lib/check-branches.php` pour les branches |
 | D'une version à l'autre | Aucune régression | `.coverage-baseline` |
 
-**Six lignes de `src/Plugin.php` ne sont pas couvertes, et ne peuvent pas
-l'être** : la branche des prérequis absents, et l'indication d'action qu'elle
-seule appelle. Un processus qui charge la dépendance ne peut pas l'exercer, et
-PHP ne retire pas une fonction déjà définie — c'est la même limite qu'en §2.2.
-Ce qu'elle produit est établi autrement : la suite `unit` exerce l'avis de
-prérequis et ses libellés, la suite `integration` établit qu'un diagnostic de
-branche historique produit bien le bon avis.
+**Sept lignes ne sont pas couvertes, et ne peuvent pas l'être dans ce
+harnais.** Six sont dans `src/Plugin.php` : la branche des prérequis absents, et
+l'indication d'action qu'elle seule appelle. Un processus qui charge la
+dépendance ne peut pas l'exercer, et PHP ne retire pas une fonction déjà définie
+— c'est la même limite qu'en §2.2. Ce qu'elle produit est établi autrement : la
+suite `unit` exerce l'avis de prérequis et ses libellés, la suite `integration`
+établit qu'un diagnostic de branche historique produit bien le bon avis.
+
+La septième est l'appel à `nocache_headers()` de `Integration\Cache_Guard`,
+gardé par `! headers_sent()`. Dans un processus PHPUnit, la sortie a déjà
+commencé dès le premier point de progression : la garde est donc toujours fausse.
+L'alternative — appeler `nocache_headers()` sans garde — produirait un
+avertissement PHP sur une requête réelle où les en-têtes sont déjà partis, et
+ajouter une couture pour la seule commodité du test déplacerait le problème sans
+le régler. Ce que le marquage **décide** est testé : quatre tests établissent
+quelles réponses sont marquées et lesquelles ne le sont pas.
 
 Le plancher renforcé porte sur les trois répertoires purs, et sur eux seuls. Ce
 sont les seuls composants dont un défaut se traduit directement par un accès

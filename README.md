@@ -9,11 +9,10 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Les deux fonctions du plugin existent à la portée globale.** Les lots 0 à 6
-sont livrés : une adresse de la liste d'autorisation accède à tout contenu
-restreint du site, connectée ou non, et une adresse de la liste de blocage ne
-peut pas s'inscrire. Il manque les portées par niveau d'adhésion et par contenu,
-et la couverture des taxonomies. Ce qui est livré et vérifié :
+**Deux portées d'autorisation sur trois.** Les lots 0 à 7 sont livrés : une
+adresse peut être autorisée globalement ou **par niveau d'adhésion**, et une
+adresse de la liste de blocage ne peut pas s'inscrire. Il manque la portée par
+contenu et la couverture des taxonomies. Ce qui est livré et vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -38,13 +37,25 @@ et la couverture des taxonomies. Ce qui est livré et vérifié :
 | Points d'extension du §8 sur le chemin d'accès, dont un filtre qui ne peut que **retirer** un octroi | `src/Support/Extension_Points.php`, suite `access` |
 | Blocage d'inscription : une adresse de la liste ne peut pas soumettre le formulaire, avec un message avare et échappé | `src/Integration/Registration_Guard.php`, suite `access` |
 | Les deux listes ne partagent ni stockage, ni chemin de décision, ni instance (A-01) | `src/Policy/`, tests sur les signatures |
-| Les cinq suites de tests sont peuplées — 334 tests | `phpunit.xml.dist`, `tests/` |
+| Portée par niveau d'adhésion : champ sur les écrans de niveau, stockage en métadonnée, et **non-transitivité** — une autorisation sur un niveau n'ouvre aucun autre niveau | `src/Admin/Level_Field.php`, `src/Policy/Access_Policy.php`, suite `access` |
+| Les cinq suites de tests sont peuplées — 362 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
-**Rien d'autre.** Les portées par niveau d'adhésion et par contenu sont les
-lots 7 et 8, et la couverture des taxonomies le lot 9. Les deux listes ne valent
-donc, pour l'instant, qu'à la portée globale.
+**Rien d'autre.** La portée par contenu est le lot 8, la couverture des
+taxonomies le lot 9.
+
+### Les trois portées ne se cumulent pas comme on le croit
+
+| Autorisation posée sur | Ouvre | N'ouvre pas |
+|---|---|---|
+| La liste globale | Tout contenu restreint du site, tous niveaux confondus | — |
+| Un niveau d'adhésion | Les contenus restreints **à ce niveau** | Les contenus d'un autre niveau, ni ceux restreints autrement (rôle, niveau d'accès) |
+| Un contenu | Ce seul contenu *(lot 8)* | — |
+
+Une autorisation de niveau n'est **pas** une autorisation globale restreinte :
+c'est une autorisation qui ne s'applique qu'aux contenus de ce niveau. Un
+contenu réservé à « Or » ne regarde jamais la liste d'« Argent ».
 
 ### Les deux listes ne se ressemblent que de loin
 

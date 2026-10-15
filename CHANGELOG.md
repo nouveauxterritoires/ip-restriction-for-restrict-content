@@ -5,6 +5,74 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 7 : portée par niveau d'adhésion. **Deux portées d'autorisation sur trois**
+existent désormais, et elles ne sont pas transitives.
+
+### Ajouté
+
+- Champ de liste d'autorisation sur les deux écrans de niveau de la dépendance,
+  enregistré par les deux actions qu'elle déclenche après avoir vérifié son
+  propre nonce (FNC-25). Le libellé énonce la non-transitivité : c'est la chose
+  que l'administrateur ne devinera pas, et celle dont l'erreur coûte le plus.
+- **FNC-04, la non-transitivité, obtenue par ce que la politique ne reçoit
+  pas.** `Access_Policy::decide()` ne voit que les listes des niveaux qui
+  restreignent le contenu demandé : une autorisation posée sur un autre niveau
+  n'est pas même consultée. Ce n'est pas une comparaison qui échoue, c'est une
+  liste qui n'entre pas dans le calcul. L'implémentation naïve — passer toutes
+  les listes et laisser la politique trancher — violerait l'exigence
+  silencieusement, et transformerait chaque autorisation de niveau en
+  autorisation globale.
+- Le test de portée croisée, et sa contrepartie : une autorisation sur
+  « Argent » ouvre les contenus d'« Argent » et aucun contenu d'« Or ». Ni les
+  contenus restreints autrement — par rôle ou par niveau d'accès —, qui ne
+  consultent aucune liste de niveau.
+- FNC-06 est enfin **vérifiable** et vérifié : la disjonction demande deux
+  portées, et il y en a deux. Une seule portée satisfaite suffit, deux n'ont pas
+  d'effet supplémentaire, et la portée rapportée est la plus large — c'est elle
+  qui explique l'accès.
+- La décision porte l'identifiant de la portée qui a accordé : sur un site à dix
+  niveaux, « un niveau a accordé » n'aide pas.
+- Stockage en métadonnée de niveau par l'interface de la dépendance (§6.3,
+  ADR-0004). Une liste vidée **supprime** la métadonnée plutôt que d'écrire une
+  chaîne vide : un réglage absent et un réglage vide doivent se lire pareil.
+- L'avis d'entrées refusées couvre les listes de niveau, avec le nom du niveau :
+  un avis qui ne couvrirait que les listes globales laisserait une ligne inerte
+  sans aucun signe sur un écran de niveau (FNC-22, A-03).
+- `.coverage-baseline` passe de 99,37 % à 99,43 %.
+
+### Corrigé
+
+- **ADR-0004 tenait pour acquis que la suppression d'un niveau emporterait sa
+  métadonnée. C'est faux.** Le test écrit pour constater cette propriété a
+  échoué : après `rcp_delete_membership_level()`, la métadonnée est toujours
+  lisible (JE-025). Le plugin la supprime donc lui-même, sur l'action
+  `rcp_remove_level`. Ce n'est pas une question de propreté : les identifiants
+  de niveau viennent d'une table auto-incrémentée, et un réglage orphelin
+  accorderait un accès au prochain niveau à porter le même identifiant — une
+  fuite d'accès silencieuse. L'ADR porte le constat, et deux tests figent la
+  situation : l'un vérifie notre nettoyage, l'autre que la dépendance seule n'en
+  fait pas. Si le second échoue un jour, notre nettoyage pourra disparaître.
+
+### Levé
+
+- Point ouvert V-01, second volet : une autorisation posée sur le **niveau**
+  l'emporte aussi sur une adhésion expirée. La vérification demandait les deux
+  volets ; le premier a été établi au lot 5.
+
+### Documentation
+
+- JE-025 : la suppression d'un niveau ne supprime pas ses métadonnées.
+- `docs/tests.md` consigne la septième ligne non couvrable du plugin — l'appel à
+  `nocache_headers()`, gardé par `! headers_sent()`, qui ne peut pas être
+  atteint dans un processus PHPUnit dont la sortie a déjà commencé. Ajouter une
+  couture pour la seule commodité du test déplacerait le problème sans le
+  régler ; ce que le marquage **décide** est testé par quatre tests.
+- Le README gagne un tableau des trois portées : ce qu'une autorisation ouvre, et
+  ce qu'elle n'ouvre pas. Une autorisation de niveau n'est pas une autorisation
+  globale restreinte.
+
+---
+
 Lot 6 : blocage d'inscription. **Les deux fonctions du plugin existent
 désormais à la portée globale** : une adresse de la liste d'autorisation accède
 au contenu restreint, une adresse de la liste de blocage ne peut pas s'inscrire.

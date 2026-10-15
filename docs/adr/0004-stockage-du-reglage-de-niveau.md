@@ -63,3 +63,21 @@ requête.
 Si la suite `contract` établissait que l'API de métadonnées de niveau n'est pas
 disponible dans une variante ou une version visée, l'option A deviendrait le
 repli — accompagnée, alors, de l'accroche de nettoyage et de son test.
+
+## Constat postérieur — lot 7
+
+L'argument du nettoyage automatique est **faux sur la version installée de la
+dépendance**. Le test écrit pour le constater a échoué : après
+`rcp_delete_membership_level()`, la métadonnée du niveau est toujours lisible
+(JE-025).
+
+La décision ne change pas — l'interface existe, aucune table dédiée n'est
+nécessaire (ADR-0003), et la métadonnée suit le niveau dans les exports —, mais
+elle coûte désormais un nettoyage explicite : le plugin supprime la métadonnée
+sur l'action `rcp_remove_level`. Sans lui, un réglage orphelin accorderait un
+accès au prochain niveau à porter le même identifiant, les identifiants venant
+d'une table auto-incrémentée.
+
+Deux tests figent la situation : l'un vérifie notre nettoyage, l'autre constate
+que la dépendance seule n'en fait pas. Si le second échoue un jour, c'est que
+l'amont a corrigé le comportement, et notre nettoyage peut disparaître.
