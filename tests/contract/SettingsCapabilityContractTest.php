@@ -19,7 +19,7 @@ declare( strict_types = 1 );
 
 namespace Ip_Restriction_For_Restrict_Content\Tests\Contract;
 
-use RCP_Capabilities;
+use Ip_Restriction_For_Restrict_Content\Tests\Support\Dependency_Capabilities;
 use WP_UnitTestCase;
 
 /**
@@ -38,14 +38,16 @@ final class SettingsCapabilityContractTest extends WP_UnitTestCase {
 	 * La dépendance accorde la capacité à l'administrateur.
 	 *
 	 * L'attribution est rejouée explicitement : elle a lieu à l'activation du
-	 * plugin amont, que la bibliothèque de tests n'effectue pas (JE-002). Ce
-	 * que le test établit est donc bien ce qui compte — que l'interface
-	 * d'attribution existe et accorde cette capacité-là.
+	 * plugin amont, que la bibliothèque de tests n'effectue pas (JE-002), et le
+	 * rejeu seul reste invisible dans le processus (JE-017) — d'où
+	 * Dependency_Capabilities. Ce que le test établit est donc bien ce qui
+	 * compte : que l'interface d'attribution existe et accorde cette
+	 * capacité-là.
 	 *
 	 * @return void
 	 */
 	public function test_the_dependency_grants_the_settings_capability_to_administrators(): void {
-		( new RCP_Capabilities() )->add_caps();
+		Dependency_Capabilities::grant();
 
 		$administrator = self::factory()->user->create( array( 'role' => 'administrator' ) );
 
@@ -66,7 +68,7 @@ final class SettingsCapabilityContractTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_the_settings_capability_is_not_granted_to_subscribers(): void {
-		( new RCP_Capabilities() )->add_caps();
+		Dependency_Capabilities::grant();
 
 		$subscriber = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 

@@ -625,3 +625,55 @@ ligne date une preuve, il ne constitue pas un contrat**. Les positions sont
 conservées dans le catalogue de capacités à titre de preuve datée, et c'est la
 suite `contract` — 36 tests, exécutés contre la version installée — qui tient le
 contrat.
+
+---
+
+## JE-017 — Une capacité ajoutée en cours de processus reste invisible, et la suite ne verdissait qu'au second passage
+
+**Date** : 15 octobre 2026 · **Contexte** : première exécution réelle de
+l'intégration continue, après la création du dépôt distant.
+
+La suite `contract` passait en local et échouait en intégration continue, sur
+deux tests et toujours les mêmes : l'attribution de `rcp_manage_settings` à
+l'administrateur, et l'accroche de champ de l'écran de création d'un niveau.
+Les deux messages accusaient l'amont — « la dépendance n'accorde plus… », « ne
+déclenche plus… » — alors que ni WordPress (7.1.3), ni Restrict Content (4.0.5),
+ni PHP (8.1), ni l'ordre des tests ne différaient entre les deux
+environnements.
+
+La différence n'était pas l'environnement mais son **historique**. Reproduit en
+détruisant la base de tests locale :
+
+| Passage sur une base vierge | Résultat |
+|---|---|
+| 1 | 2 échecs |
+| 2 | 36 tests passants |
+| 3 | 36 tests passants |
+
+L'intégration continue est, par construction, toujours un premier passage.
+
+La cause est en deux temps. La dépendance accorde ses capacités à
+**l'activation** de son plugin, que la bibliothèque de tests n'effectue pas :
+c'est JE-002, et les tests rejouaient donc `RCP_Capabilities::add_caps()`
+explicitement. Mais `WP_Roles::add_cap()` écrit la capacité dans son tableau
+`roles` et dans l'option qui le mémorise, **et pas dans les objets `WP_Role`
+déjà construits** — or c'est d'eux que `WP_User::get_role_caps()` dérive les
+capacités effectives. Le rejeu restait donc sans effet observable dans le
+processus courant. Au passage suivant, l'option portait les capacités écrites
+par le passage précédent, les objets `WP_Role` en héritaient dès leur
+construction, et la suite verdissait.
+
+L'écran de création d'un niveau échouait pour la même raison : son accroche est
+à l'intérieur d'une garde `current_user_can( 'rcp_manage_levels' )`
+(`core/includes/admin/subscriptions/subscription-levels.php:43`).
+
+**Conséquence** : `tests/Support/Dependency_Capabilities` rejoue l'attribution
+puis réinitialise les rôles depuis l'option (`wp_roles()->for_site()`). La suite
+passe désormais au premier passage sur une base vierge, et au suivant.
+
+Deux morales. La première : un test qui écrit dans un état persistant peut se
+rendre vrai lui-même au passage suivant — un vert obtenu au second passage n'est
+pas un vert, et seule une base détruite entre deux exécutions le dit. La
+seconde : les deux messages d'échec, écrits pour accuser l'amont, ont désigné le
+mauvais coupable pendant tout le diagnostic. Un message de contrat devrait
+nommer ce qu'il a constaté, pas la conclusion qu'il en tire.

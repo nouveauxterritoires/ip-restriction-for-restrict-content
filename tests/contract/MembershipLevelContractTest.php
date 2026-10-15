@@ -23,6 +23,7 @@ declare( strict_types = 1 );
 
 namespace Ip_Restriction_For_Restrict_Content\Tests\Contract;
 
+use Ip_Restriction_For_Restrict_Content\Tests\Support\Dependency_Capabilities;
 use Ip_Restriction_For_Restrict_Content\Tests\Support\Hook_Witness;
 use WP_UnitTestCase;
 
@@ -207,9 +208,16 @@ final class MembershipLevelContractTest extends WP_UnitTestCase {
 	/**
 	 * L'écran de création d'un niveau expose son accroche de champ.
 	 *
+	 * L'accroche est à l'intérieur d'une garde de capacité
+	 * (`core/includes/admin/subscriptions/subscription-levels.php:43`) : sans
+	 * les capacités de la dépendance, l'administrateur du test ne voit pas le
+	 * formulaire, et l'échec accuse l'amont au lieu de l'environnement
+	 * (JE-017).
+	 *
 	 * @return void
 	 */
 	public function test_the_add_level_screen_exposes_its_field_hook(): void {
+		Dependency_Capabilities::grant();
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 
 		$witness = Hook_Witness::watch( 'rcp_add_subscription_form', 1 );
@@ -232,6 +240,7 @@ final class MembershipLevelContractTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_the_edit_level_screen_exposes_its_field_hook(): void {
+		Dependency_Capabilities::grant();
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 
 		$level_id = $this->create_level();
