@@ -23,21 +23,69 @@ log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 # commande uniquement (PHP/mysqli n'est pas concerné).
 MYSQL_CLIENT_OPTS="${MYSQL_CLIENT_OPTS:---skip-ssl}"
 
-if [ "$WP_VERSION" = "latest" ] || [ "$WP_VERSION" = "trunk" ]; then
+# « latest » est résolu en numéro de version, et non traduit par « trunk ».
+#
+# Motif, consigné en JE-013 : le cœur de WordPress était téléchargé depuis
+# `latest.tar.gz`, donc la dernière version **publiée**, tandis que la
+# bibliothèque de tests était récupérée sur `trunk`, donc la version en
+# développement. Les deux divergent dès qu'une version majeure est en
+# préparation, et la suite échouait à l'amorçage sur un symbole que seule la
+# branche de développement définit — « Interface "WP_Secrets_Store" not found »,
+# un message qui ne nomme pas sa cause.
+#
+# Une seule source de vérité : l'interrogation de l'API de version de
+# WordPress.org, et le même numéro sert au cœur et à la bibliothèque.
+if [ "$WP_VERSION" = "trunk" ]; then
   WP_TESTS_TAG="trunk"
 else
+  if [ "$WP_VERSION" = "latest" ]; then
+    # `grep -o` plutôt qu'une expression gourmande : l'API énumère plusieurs
+    # offres, et une capture gourmande retiendrait la dernière — une version
+    # d'une branche ancienne, ce qui est pire qu'une erreur franche.
+    WP_VERSION="$(
+      curl -sSL "https://api.wordpress.org/core/version-check/1.7/" \
+        | grep -o '"current":"[^"]*"' \
+        | head -1 \
+        | cut -d'"' -f4
+    )"
+
+    if [ -z "$WP_VERSION" ]; then
+      echo "Impossible de résoudre la dernière version de WordPress." >&2
+      echo "Fixez WP_VERSION explicitement, par exemple WP_VERSION=6.4." >&2
+      exit 1
+    fi
+
+    log "Dernière version publiée de WordPress : $WP_VERSION"
+  fi
+
   WP_TESTS_TAG="tags/$WP_VERSION"
+fi
+
+# Le cœur et la bibliothèque sont conservés dans un volume : une version
+# retenue précédemment doit être remplacée, sans quoi la divergence persiste
+# d'une exécution à l'autre.
+INSTALLED_VERSION_FILE="${WP_CORE_DIR}/.rcipr-wp-version"
+
+if [ -f "$INSTALLED_VERSION_FILE" ] && [ "$(cat "$INSTALLED_VERSION_FILE")" != "$WP_VERSION" ]; then
+  log "Version installée différente de $WP_VERSION : réinstallation"
+  rm -rf "$WP_CORE_DIR" "$WP_TESTS_DIR"
 fi
 
 if [ ! -d "$WP_CORE_DIR" ]; then
   log "Téléchargement du cœur WordPress ($WP_VERSION)"
   mkdir -p "$WP_CORE_DIR"
-  if [ "$WP_VERSION" = "latest" ] || [ "$WP_VERSION" = "trunk" ]; then
-    url="https://wordpress.org/latest.tar.gz"
+  if [ "$WP_VERSION" = "trunk" ]; then
+    url="https://wordpress.org/nightly-builds/wordpress-latest.zip"
+    curl -sSL "$url" -o /tmp/wp-trunk.zip
+    unzip -q /tmp/wp-trunk.zip -d /tmp/wp-trunk
+    mv /tmp/wp-trunk/wordpress/* "$WP_CORE_DIR"/
+    rm -rf /tmp/wp-trunk /tmp/wp-trunk.zip
   else
     url="https://wordpress.org/wordpress-${WP_VERSION}.tar.gz"
+    curl -sSL "$url" | tar --strip-components=1 -zx -C "$WP_CORE_DIR"
   fi
-  curl -sSL "$url" | tar --strip-components=1 -zx -C "$WP_CORE_DIR"
+
+  printf '%s' "$WP_VERSION" > "$INSTALLED_VERSION_FILE"
 fi
 
 if [ ! -d "$WP_TESTS_DIR" ]; then
