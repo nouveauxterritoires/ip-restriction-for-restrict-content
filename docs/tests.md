@@ -3,13 +3,11 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 3** : les suites `unit` (51 tests), `integration` (22 tests),
-`contract` (36 tests) et `matching` (120 tests) sont peuplées ; la suite `access`
-est déclarée et vide. Une suite vide sort en succès (JE-001) : celle-là n'est
-donc pas encore déclarée comme job d'intégration continue, et son verdict actuel
-ne vaut rien. La suite `contract` est exécutée par les jobs `contract-free` et
-`contract-pro` : **les deux ont tourné et sont verts** depuis le 15 octobre 2026,
-ce qui a levé le point ouvert V-10.
+**État au lot 4** : les **cinq** suites sont peuplées — `unit` (78 tests),
+`integration` (26), `contract` (36), `matching` (120) et `access` (22). Chacune
+a son job d'intégration continue, et la suite `contract` est exécutée par les
+jobs `contract-free` et `contract-pro` : **les deux ont tourné et sont verts**
+depuis le 15 octobre 2026, ce qui a levé le point ouvert V-10.
 
 ---
 
@@ -217,6 +215,14 @@ qu'ici serait mentir sur ce qu'ils établissent.
 
 ### 2.5 `access` — le comportement observable
 
+**Peuplée au lot 4** : `SettingsScreenTest` et `RejectionNoticeTest` —
+22 tests. Ils portent ce qui garde l'écriture des réglages, parce qu'un écran
+qui accorde des accès est une surface d'attaque : qui peut y écrire peut ouvrir
+tout le contenu restreint du site. L'ordre des contrôles y est testé pour
+lui-même — une requête à la fois sans droit et sans nonce doit être refusée
+**pour le nonce** (SEC-01). Le reste du tableau ci-dessous attend les lots 5
+à 9.
+
 **Ce qu'elle doit établir**, sur un site réel, avec des niveaux et des contenus
 réellement restreints :
 
@@ -289,6 +295,14 @@ couvert par `tests/unit/Tooling/ScannersTest.php`, qui **exécute** le scanner.
 | `src/` entier | 80 % des lignes | `bin/check-coverage.sh` sur un Clover fusionné |
 | `src/Address/`, `src/Rule/`, `src/Policy/` | 100 % des lignes et des branches | `bin/check-coverage.sh` pour les lignes, `bin/lib/check-branches.php` pour les branches |
 | D'une version à l'autre | Aucune régression | `.coverage-baseline` |
+
+**Six lignes de `src/Plugin.php` ne sont pas couvertes, et ne peuvent pas
+l'être** : la branche des prérequis absents, et l'indication d'action qu'elle
+seule appelle. Un processus qui charge la dépendance ne peut pas l'exercer, et
+PHP ne retire pas une fonction déjà définie — c'est la même limite qu'en §2.2.
+Ce qu'elle produit est établi autrement : la suite `unit` exerce l'avis de
+prérequis et ses libellés, la suite `integration` établit qu'un diagnostic de
+branche historique produit bien le bon avis.
 
 Le plancher renforcé porte sur les trois répertoires purs, et sur eux seuls. Ce
 sont les seuls composants dont un défaut se traduit directement par un accès

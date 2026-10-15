@@ -1,9 +1,9 @@
 # Architecture
 
 Ce document décrit la forme prévue du code. Au moment où il est écrit, les
-lots 0 à 3 sont livrés : l'amorçage conditionnel, la sonde de capacités,
-l'écran d'état, le moteur de correspondance et la résolution de l'adresse du
-visiteur. Tout le reste est une cible, pas un état. Les cases non livrées
+lots 0 à 4 sont livrés : l'amorçage conditionnel, la sonde de capacités,
+l'écran d'état, le moteur de correspondance, la résolution de l'adresse du
+visiteur, et les réglages globaux avec leur écran. Tout le reste est une cible, pas un état. Les cases non livrées
 sont signalées comme telles dans l'arborescence du §3.
 
 Référence : cahier des charges §4 (règles de décision), §5 (intégration),
@@ -115,9 +115,10 @@ src/
 │   └── Registration_Decision.php       objet de valeur
 │
 ├── Settings/                           transport — lecture et écriture des réglages
-│   ├── Settings.php                    objet de valeur : l'ensemble des réglages
-│   ├── Settings_Repository.php         option, métas de niveau, métas de contenu
-│   └── Settings_Validator.php          validation à l'écriture, A-02
+│   ├── Settings.php                    livré — objet de valeur : l'ensemble des réglages
+│   ├── Settings_Validator.php          livré — validation à l'écriture, A-02, FNC-28
+│   ├── Validated_Settings.php          livré — réglages normalisés + refus par liste
+│   └── Settings_Repository.php         livré — l'option ; métas de niveau et de contenu aux lots 7 et 8
 │
 ├── Http/                               transport — environnement de la requête
 │   └── Server_Environment.php          livré — seul point du plugin qui lise $_SERVER
@@ -134,10 +135,11 @@ src/
 │   ├── Capability_Status_Page.php      livré — écran d'état des capacités, lecture seule
 │   ├── Capability_Labels.php           livré — libellés des fonctionnalités et des états
 │   ├── Dependency_Labels.php           livré — libellés de E-05, cause constatée et retour
-│   ├── Settings_Page.php               FNC-24, FNC-29
+│   ├── Settings_Page.php               livré — FNC-24, FNC-27, FNC-29, SEC-01, SEC-03
+│   ├── Rejection_Notice.php            livré — FNC-22, A-03, SEC-11
+│   ├── Rejection_Labels.php            livré — un libellé par motif de refus
 │   ├── Level_Field.php                 FNC-25
-│   ├── Post_Metabox.php                FNC-26
-│   └── Rejection_Notice.php            FNC-22, A-03
+│   └── Post_Metabox.php                FNC-26
 │
 └── Support/
     ├── Redactor.php                    livré — SEC-06, expurgation avant journalisation
@@ -153,6 +155,14 @@ fonction qui n'est pas interne à PHP y apparaît. Le critère est plus strict q
 « aucune fonction de WordPress », délibérément : une fonction globale que le
 plugin déclarerait ailleurs serait un couplage tout aussi contraire à
 l'architecture.
+
+**Les deux listes n'ont aucun chemin commun, et c'est vérifié.** A-01 n'est pas
+une consigne de style : les deux listes se ressemblent — deux champs de texte,
+la même grammaire, le même moteur — et n'ont pas du tout les mêmes conséquences
+en cas d'erreur. Aucun accesseur de `Settings`, aucun accesseur de
+`Validated_Settings` n'est donc paramétré par un nom de liste, et un test de la
+suite `unit` inspecte l'interface publique pour l'établir. L'écran les rend par
+deux appels distincts, avec deux champs nommés séparément.
 
 **L'arithmétique d'adresse est dans `Ip_Number`, et nulle part ailleurs.** Le
 masquage d'un préfixe CIDR et la composition d'une adresse depuis ses octets

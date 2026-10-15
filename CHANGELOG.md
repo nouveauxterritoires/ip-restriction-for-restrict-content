@@ -5,6 +5,72 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 4 : réglages globaux. Les listes se saisissent, se valident et se stockent ;
+personne ne les consulte encore pour décider d'un accès — c'est le lot 5 qui
+branchera la décision sur la dépendance.
+
+### Ajouté
+
+- Écran de réglages sous le menu de la dépendance, gardé par **sa** capacité
+  `rcp_manage_settings` (FNC-24) : les deux listes, le message de blocage, les
+  proxys de confiance, l'en-tête de transfert à lire parmi une liste fermée, et
+  la suppression des réglages à la désinstallation.
+- L'ordre des contrôles à l'enregistrement est celui qu'exige SEC-01 — **nonce
+  d'abord, capacité ensuite** —, et un test l'établit pour lui-même : une
+  requête à la fois sans droit et sans nonce est refusée pour le nonce. Le
+  contrôle qui vaut pour tout le monde parle le premier ; vérifier la capacité
+  d'abord apprendrait à un attaquant qu'il n'a pas le droit, là où il doit
+  seulement apprendre que sa requête n'est pas valide.
+- Validation à l'écriture par le **même analyseur** qu'à la lecture (A-02).
+  Deux analyseurs, même écrits le même jour, finissent par ne plus dire la même
+  chose — et celui de l'écriture serait le plus permissif, parce que personne ne
+  le relit en pensant à la sécurité.
+- Normalisation à l'enregistrement (FNC-28) : lignes ajustées, lignes vides
+  retirées, doublons fusionnés, ordre d'origine conservé. Les entrées refusées,
+  elles, sont **conservées telles quelles** (FNC-22) : refuser l'enregistrement
+  entier ferait perdre les quarante lignes valides qu'on venait de coller à
+  cause d'une faute de frappe sur la onzième.
+- Avis **persistant** d'entrées refusées (SEC-11, A-03), nommant le champ, le
+  numéro de ligne, l'entrée et le motif. Il se recalcule depuis les réglages
+  stockés à chaque rendu plutôt que d'être mémorisé à l'enregistrement : il est
+  donc persistant par construction, reste exact si la ligne a été écrite par un
+  autre chemin, et disparaît dès qu'elle est corrigée. Les trois listes y
+  figurent, celle de blocage comprise — son échec est silencieux.
+- Un libellé par motif de refus, et un test qui vérifie qu'ils sont **distincts**
+  et pas seulement présents : dix motifs traduits par la même phrase
+  satisferaient la lettre de FNC-22 et en rateraient l'objet.
+- Écran de diagnostic (FNC-29) : l'adresse retenue pour la requête en cours, sa
+  provenance, et une phrase par raison d'indétermination. L'adresse y est
+  complète et c'est délibéré — SEC-06 porte sur ce que le plugin **écrit**,
+  alors que cet écran montre au lecteur sa propre adresse, le temps d'une
+  requête, sous la capacité qui le garde. L'expurger contredirait l'objet même
+  de FNC-29.
+- Désinstallation conditionnelle (§6.6) : les réglages ne sont supprimés que si
+  l'administrateur l'a demandé. Supprimer par défaut ferait perdre une
+  configuration de plusieurs dizaines de lignes à qui désinstalle pour déboguer
+  ou le temps d'une migration, et une liste d'adresses ne se retrouve pas de
+  mémoire. Les comptes utilisateurs ne sont jamais touchés.
+- SEC-04 : un test de la suite `unit` parcourt `src/` par analyse lexicale et
+  échoue sur toute requête directe. L'analyse lexicale plutôt qu'une expression
+  régulière, pour que `$wpdb` cité dans un commentaire — celui qui explique
+  pourquoi on ne s'en sert pas — ne fasse pas échouer le test.
+- La suite `access` est peuplée, et les **cinq** suites ont désormais leur job
+  d'intégration continue.
+- `.coverage-baseline` passe de 98,55 % à 99,28 %.
+
+### Décidé
+
+- Point ouvert O-08 : les réglages sont **propres à chaque site** d'un réseau
+  (ADR-0009). C'est ce que le §11.7 supposait déjà, et une liste d'autorisation
+  de réseau serait un amplificateur d'erreur — une règle trop couvrante saisie
+  une fois ouvrirait le contenu restreint de tous les sites, et le §4.6 pose que
+  cette erreur-là est silencieuse et durable. Un réseau qui veut la même liste
+  partout la pose par le filtre du §8.1 : moins commode qu'un écran, et c'est la
+  bonne commodité. La décision reste rétrocompatible avec un réglage de réseau
+  servant plus tard de valeur par défaut.
+
+---
+
 Lot 3 : résolution de l'adresse du visiteur. Aucune fonctionnalité de
 restriction n'est encore livrée — le plugin sait maintenant quelle adresse
 évaluer, et personne ne lui demande encore de décider quoi que ce soit.

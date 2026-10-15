@@ -9,10 +9,11 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Le plugin ne restreint rien pour le moment.** Les lots 0 à 3 sont livrés : le
-moteur de correspondance et la résolution de l'adresse du visiteur existent et
-sont exhaustivement testés, mais rien ne les branche encore sur la dépendance.
-Ce qui est livré et vérifié :
+**Le plugin ne restreint rien pour le moment.** Les lots 0 à 4 sont livrés : les
+listes se saisissent et se valident, l'adresse du visiteur se résout, le moteur
+dit si elle correspond — mais rien ne branche encore cette décision sur la
+dépendance, et aucun accès n'est donc accordé ni refusé. Ce qui est livré et
+vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -29,13 +30,17 @@ Ce qui est livré et vérifié :
 | Aucun appel à WordPress dans la couche de décision, vérifié mécaniquement | `tests/unit/Tooling/PurityTest.php` |
 | Résolution de l'adresse du visiteur : `REMOTE_ADDR` par défaut, en-tête lu seulement derrière un proxy déclaré, chaîne remontée de droite à gauche | `src/Address/Client_Address_Resolver.php`, `src/Http/Server_Environment.php` |
 | Expurgation avant toute écriture : jamais d'adresse complète dans un message du plugin | `src/Support/Redactor.php` |
-| Cinq suites de tests déclarées, dont quatre peuplées — 229 tests | `phpunit.xml.dist`, `tests/` |
+| Écran de réglages sous le menu de la dépendance : les deux listes, le message de blocage, les proxys, l'en-tête à lire, la suppression à la désinstallation | `src/Admin/Settings_Page.php`, suite `access` |
+| Validation à l'écriture avec la même sévérité qu'à la lecture, et avis **persistant** nommant chaque entrée ignorée, sa ligne et son motif | `src/Settings/Settings_Validator.php`, `src/Admin/Rejection_Notice.php` |
+| Écran de diagnostic : l'adresse retenue pour la requête en cours et sa provenance | `src/Admin/Settings_Page.php`, suite `access` |
+| Les cinq suites de tests sont peuplées — 282 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
-**Rien d'autre.** Ni liste d'autorisation, ni liste de blocage, ni écran de
-réglages. Le plugin sait quelle adresse évaluer et si elle correspond à une
-liste ; personne ne l'interroge encore. Ce que le plugin
+**Rien d'autre.** Les listes existent, se valident et se stockent ; personne ne
+les consulte encore pour décider d'un accès. C'est le lot 5 qui branchera la
+décision sur la dépendance, et les lots 7 et 8 qui ajouteront les portées par
+niveau d'adhésion et par contenu. Ce que le plugin
 fera est spécifié dans le cahier des charges ; le découpage en lots est au §13.
 
 La suite `contract` est exécutée contre les **deux** variantes en intégration
@@ -162,6 +167,7 @@ archive dans `vendor-plugins/`, ou désignez un répertoire décompressé par
 | [0006](docs/adr/0006-adresse-du-visiteur.md) | `REMOTE_ADDR` par défaut, en-tête sur déclaration explicite |
 | [0007](docs/adr/0007-asymetrie-des-deux-listes.md) | Les deux listes ne partagent ni stockage ni chemin de décision |
 | [0008](docs/adr/0008-slug-et-mention-de-non-affiliation.md) | Slug conservé, mention de non-affiliation maintenue |
+| [0009](docs/adr/0009-portee-des-reglages-sur-multisite.md) | Réglages propres à chaque site d'un réseau |
 
 ---
 
