@@ -3,13 +3,13 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 1** : les suites `unit` (43 tests), `integration` (22 tests) et
-`contract` (36 tests) sont peuplées ; les suites `matching` et `access` sont
-déclarées et vides. Une suite vide sort en succès (JE-001) : ces deux-là ne sont
-donc pas encore déclarées comme jobs d'intégration continue, et leur verdict
-actuel ne vaut rien. La suite `contract` est exécutée par les jobs
-`contract-free` et `contract-pro` depuis le lot 1 ; seul le premier a tourné, le
-second attendant l'archive commerciale (V-10).
+**État au lot 2** : les suites `unit` (46 tests), `integration` (22 tests),
+`contract` (36 tests) et `matching` (93 tests) sont peuplées ; la suite `access`
+est déclarée et vide. Une suite vide sort en succès (JE-001) : celle-là n'est
+donc pas encore déclarée comme job d'intégration continue, et son verdict actuel
+ne vaut rien. La suite `contract` est exécutée par les jobs `contract-free` et
+`contract-pro` depuis le lot 1 ; seul le premier a tourné, le second attendant
+l'archive commerciale (V-10).
 
 ---
 
@@ -61,7 +61,8 @@ Peuplée : `RequirementsNoticeTest`, `MakefileTest`, `RepositoryHygieneTest`,
 `ScannersTest`, et la base commune `UnitTestCase` au lot 0 ;
 `DependencyDiagnosisTest`, `CapabilityReportTest` et `CapabilityCatalogueTest`
 au lot 1 — les trois états du diagnostic de E-05, les trois états d'une capacité
-dont le « non observable » de JE-015, et l'intégrité du catalogue.
+dont le « non observable » de JE-015, et l'intégrité du catalogue ;
+`PurityTest` au lot 2, qui établit la frontière de l'architecture.
 
 ### 2.2 `integration` — le plugin dans un WordPress réel
 
@@ -177,6 +178,14 @@ des charges §11.3. Chacun est un test nommé d'après son scénario. Ce n'est p
 une liste indicative : c'est la traduction de SEC-07 à SEC-09, et l'absence
 d'un seul de ces tests laisse une voie de contournement non couverte.
 
+**Peuplée au lot 2** : `IpNumberTest`, `RuleTest`, `RuleParserTest` et
+`MatcherTest` — 93 tests. Les formats de FNC-13 à FNC-18 passent par un
+fournisseur de données qui énonce les bornes attendues, et les contraintes
+G-01 à G-07 par un second qui énonce le **motif de refus** attendu : un
+analyseur qui rejetterait tout avec le même motif satisferait FNC-20 et rendrait
+FNC-22 inutilisable. Les onze scénarios de résolution d'adresse viendront au
+lot 3, avec le résolveur qu'ils éprouvent.
+
 ### 2.5 `access` — le comportement observable
 
 **Ce qu'elle doit établir**, sur un site réel, avec des niveaux et des contenus
@@ -249,7 +258,7 @@ couvert par `tests/unit/Tooling/ScannersTest.php`, qui **exécute** le scanner.
 | Périmètre | Plancher | Contrôle |
 |---|---|---|
 | `src/` entier | 80 % des lignes | `bin/check-coverage.sh` sur un Clover fusionné |
-| `src/Address/`, `src/Rule/`, `src/Policy/` | 100 % des lignes et des branches | Même script, plancher propre au périmètre |
+| `src/Address/`, `src/Rule/`, `src/Policy/` | 100 % des lignes et des branches | `bin/check-coverage.sh` pour les lignes, `bin/lib/check-branches.php` pour les branches |
 | D'une version à l'autre | Aucune régression | `.coverage-baseline` |
 
 Le plancher renforcé porte sur les trois répertoires purs, et sur eux seuls. Ce
@@ -260,6 +269,13 @@ contorsion, parce qu'ils n'ont ni environnement ni effet de bord.
 La couverture ne se mesure jamais suite par suite : une suite ciblée affiche un
 taux partiel trompeur. `phpunit.xml.dist` ne demande donc aucun rapport par
 défaut ; `make coverage` mesure chaque suite et fusionne.
+
+**Les branches ne sont pas dans le rapport Clover.** Elles sont relues depuis la
+mesure sérialisée **fusionnée** — fusionnée et non suite par suite, parce que
+les identifiants de branche d'un fichier chargé mais non exécuté ne coïncident
+pas avec ceux du même fichier exécuté. La couverture de chemins exige en outre
+de restreindre l'instrumentation d'Xdebug à `src/`, sans quoi le processus est
+tué par le système (JE-018).
 
 ---
 

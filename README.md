@@ -9,8 +9,9 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Le plugin ne restreint rien pour le moment.** Les lots 0 et 1 sont livrés. Ce
-qui est livré et vérifié :
+**Le plugin ne restreint rien pour le moment.** Les lots 0, 1 et 2 sont livrés :
+le moteur de correspondance d'adresses existe et est exhaustivement testé, mais
+rien ne le branche encore sur la dépendance. Ce qui est livré et vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -22,17 +23,38 @@ qui est livré et vérifié :
 | Écran d'état des capacités, en lecture seule, disponible même quand la dépendance ne l'est pas | `src/Admin/Capability_Status_Page.php`, `tests/integration/CapabilityStatusPageTest.php` |
 | Preuve par l'exécution que chaque accroche du §5.1 se déclenche | `tests/contract/`, 36 tests contre Restrict Content 4.0.5 |
 | Preuve par l'exécution que la bascule de branche amont est réversible, sous capacité et sous nonce | `tests/contract/BranchSwitchContractTest.php` |
-| Cinq suites de tests déclarées, dont trois peuplées — 101 tests | `phpunit.xml.dist`, `tests/` |
+| Moteur de correspondance : grammaire close, quatre formes normalisées en intervalles, IPv4 et IPv6, décision sur un ensemble | `src/Rule/`, `src/Address/Ip_Number.php`, 93 tests de la suite `matching` |
+| Couverture de 100 % des lignes **et des branches** sur le moteur | `bin/check-coverage.sh`, `bin/lib/check-branches.php` |
+| Aucun appel à WordPress dans la couche de décision, vérifié mécaniquement | `tests/unit/Tooling/PurityTest.php` |
+| Cinq suites de tests déclarées, dont quatre peuplées — 197 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
 **Rien d'autre.** Ni liste d'autorisation, ni liste de blocage, ni écran de
-réglages, ni moteur de correspondance d'adresses. Ce que le plugin fera est
-spécifié dans le cahier des charges ; le découpage en lots est au §13.
+réglages, ni résolution de l'adresse du visiteur. Le moteur sait dire si une
+adresse correspond à une liste ; personne ne l'interroge encore. Ce que le plugin
+fera est spécifié dans le cahier des charges ; le découpage en lots est au §13.
 
-**Ce qui reste à faire sur le lot 1** : exécuter la suite `contract` contre
-Restrict Content Pro, ce qui demande son archive (`make test-contract-pro`) et
-lèvera le point ouvert V-10.
+**Ce qui reste en suspens** : exécuter la suite `contract` contre Restrict
+Content Pro, ce qui demande son archive (`make test-contract-pro`) et lèvera le
+point ouvert V-10.
+
+### Formats acceptés par le moteur
+
+| Forme | Exemple | IPv4 | IPv6 |
+|---|---|---|---|
+| Littéral | `226.216.136.78`, `2001:db8::1` | oui | oui |
+| Joker sur les octets de fin | `200.122.216.*`, `186.*.*.*`, `149.58.*` | oui | **non** (ADR-0005) |
+| Plage, bornes incluses | `159.7.89.231-159.7.89.240` | oui | oui |
+| CIDR | `10.0.0.0/24`, `2001:db8::/32` | oui | oui |
+| Plage à bornes jokers | `149.58.*-149.60.*` | oui | **non** |
+
+Une entrée par ligne ; les lignes vides, les espaces de bordure et les
+commentaires introduits par `#` sont ignorés. Une entrée que l'analyseur ne
+comprend pas est **rejetée avec un motif nommé**, jamais interprétée par
+approximation : familles mêlées, plage inversée, préfixe hors bornes, joker
+devant un littéral, règle couvrant toutes les adresses, joker dans un CIDR, nom
+d'hôte, joker IPv6, octet à zéro de tête.
 
 ---
 

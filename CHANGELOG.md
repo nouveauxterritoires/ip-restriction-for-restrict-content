@@ -5,6 +5,70 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 2 : moteur de correspondance. Aucune fonctionnalité de restriction n'est
+encore livrée — le moteur sait dire si une adresse correspond à une liste, et
+personne ne l'interroge encore.
+
+### Ajouté
+
+- Moteur de correspondance pur, sans aucun appel à WordPress : conversion d'une
+  adresse en entier de longueur fixe (`src/Address/Ip_Number.php`),
+  normalisation des quatre formes en intervalles bornés, analyse de la grammaire
+  close du cahier des charges §4.2, et décision sur un ensemble de règles
+  (`src/Rule/`).
+- La comparaison passe par la forme binaire de `inet_pton()` et non par un
+  entier natif : PHP n'a pas d'entier de 128 bits, et la virgule flottante
+  perdrait des bits en silence — exactement le genre de perte qui accorde un
+  accès à qui ne devait pas l'avoir.
+- Quatre-vingt-treize tests dans la suite `matching` : chaque format de FNC-13 à
+  FNC-18 avec les bornes attendues, chaque contrainte de G-01 à G-07 avec le
+  **motif de refus** attendu, les bornes d'intervalle et leurs voisines, les
+  familles croisées, et D-01 à D-05.
+- Trois précisions apportées par l'écriture de l'analyseur, toutes dans le sens
+  du refus : G-05 est contrôlé sur l'intervalle normalisé et non sur l'écriture,
+  ce qui couvre aussi `0.0.0.0-255.255.255.255` ; un octet portant un zéro de
+  tête est refusé avec un motif propre, parce que `inet_pton()` le lit
+  autrement qu'une bibliothèque qui interprète l'octal (JE-020) ; un joker peut
+  porter sur moins de quatre segments, ce qu'impose la lecture de l'exemple
+  documenté `149.58.*-149.60.*`.
+- Les commentaires introduits par `#` sont acceptés, comme la grammaire du §4.2
+  le prévoit : une liste d'adresses se relit mal sans pouvoir y noter à quoi
+  correspond un bloc.
+- Contrôle de la couverture de **branches** sur les répertoires purs
+  (`bin/lib/check-branches.php`), et extension du plancher de 100 % de lignes à
+  `src/Address/` et `src/Rule/`. La mesure est relue de la mesure sérialisée
+  fusionnée : le rapport Clover ne transporte pas cette information.
+- `tests/unit/Tooling/PurityTest.php` : la couche de décision n'appelle aucune
+  fonction qui ne soit pas interne à PHP, vérifié par analyse lexicale — un
+  `esc_html()` en commentaire ne fait pas échouer le test, un `esc_html()`
+  réellement appelé n'y échappe pas.
+- Job d'intégration continue `matching`, la suite étant désormais peuplée.
+- `.coverage-baseline` passe de 96,89 % à 98,31 %.
+
+### Supprimé
+
+- Seize branches de code défensif qu'aucun test ne pouvait prendre, débusquées
+  par le plancher de branches : vérifications de longueur après une conversion
+  qui ne peut en produire d'autre, échecs de fonctions qui ne peuvent pas
+  échouer, contrôles déjà garantis par la grammaire en amont. Elles ont été
+  supprimées et non annotées, et l'arithmétique d'adresse est remontée dans
+  `Ip_Number`, où elle compose ses résultats sans fabrique nullable (JE-019).
+
+### Corrigé
+
+- La couverture de chemins d'Xdebug faisait tuer le processus par le système sur
+  les suites qui chargent WordPress, sans message et avec le code 137 : le
+  filtre de PHPUnit ne réduit pas l'empreinte, parce qu'il filtre après
+  collecte. `tests/bootstrap.php` restreint désormais l'instrumentation à
+  `src/` dans les processus de mesure (JE-018).
+
+### Documentation
+
+- JE-018 à JE-020 : la mémoire de la couverture de chemins, le code défensif que
+  le plancher de branches a débusqué, et l'ambiguïté des zéros de tête.
+
+---
+
 Lot 1 : preuve des accroches. Aucune fonctionnalité de restriction n'est encore
 livrée — ce lot établit que la dépendance offre bien les points d'accroche dont
 les lots suivants auront besoin, et rend visible ce que le plugin constate.

@@ -1,8 +1,8 @@
 # Architecture
 
 Ce document décrit la forme prévue du code. Au moment où il est écrit, les
-lots 0 et 1 sont livrés : l'amorçage conditionnel, la sonde de capacités et
-l'écran d'état. Tout le reste est une cible, pas un état. Les cases non livrées
+lots 0 à 2 sont livrés : l'amorçage conditionnel, la sonde de capacités,
+l'écran d'état, et le moteur de correspondance. Tout le reste est une cible, pas un état. Les cases non livrées
 sont signalées comme telles dans l'arborescence du §3.
 
 Référence : cahier des charges §4 (règles de décision), §5 (intégration),
@@ -91,19 +91,19 @@ src/
 │   └── Capability_Report.php           livré — présente | absente | non observable
 │
 ├── Address/                            décision pure — adresse du visiteur
+│   ├── Ip_Number.php                   livré — entier de longueur fixe, arithmétique d'adresse
 │   ├── Client_Address.php              objet de valeur : adresse + provenance
 │   ├── Address_Source.php              énumération : connexion | en-tête
-│   ├── Client_Address_Resolver.php     R-01 à R-07, lecture de droite à gauche
-│   └── Ip_Number.php                   conversion en entier de longueur fixe
+│   └── Client_Address_Resolver.php     R-01 à R-07, lecture de droite à gauche
 │
-├── Rule/                               décision pure — le moteur
-│   ├── Rule.php                        objet de valeur : intervalle + famille + texte d'origine
-│   ├── Rule_Family.php                 énumération : IPv4 | IPv6
-│   ├── Rule_Parser.php                 grammaire §4.2, contraintes G-01 à G-07
-│   ├── Rule_Rejection.php              objet de valeur : ligne, numéro, motif
-│   ├── Rule_Set.php                    règles valides + rejets, immuable
-│   ├── Matcher.php                     §4.3 et §4.4
-│   └── Match_Result.php                objet de valeur : correspondance + règle responsable
+├── Rule/                               décision pure — le moteur, livré
+│   ├── Rule.php                        livré — intervalle + famille + texte d'origine
+│   ├── Rule_Family.php                 livré — énumération : IPv4 | IPv6
+│   ├── Rule_Parser.php                 livré — grammaire §4.2, contraintes G-01 à G-07
+│   ├── Rule_Rejection.php              livré — ligne, numéro, motif
+│   ├── Rule_Set.php                    livré — règles valides + rejets, immuable
+│   ├── Matcher.php                     livré — §4.3 et §4.4
+│   └── Match_Result.php                livré — correspondance + règle responsable
 │
 ├── Policy/                             décision pure — les portées
 │   ├── Scope.php                       énumération : globale | niveau | contenu
@@ -146,9 +146,19 @@ src/
 Trois répertoires — `Address/`, `Rule/`, `Policy/` — contiennent la totalité de
 la logique métier et **aucun appel à WordPress**. C'est ce périmètre qui porte
 le plancher de couverture renforcé du cahier des charges §11.6, et c'est la
-seule frontière qu'un test peut vérifier mécaniquement : un test de la suite
-`unit` parcourt ces trois répertoires et échoue si une fonction de WordPress y
-est appelée.
+seule frontière qu'un test peut vérifier mécaniquement : `tests/unit/Tooling/PurityTest.php`
+parcourt ces trois répertoires par analyse lexicale et échoue si un appel à une
+fonction qui n'est pas interne à PHP y apparaît. Le critère est plus strict que
+« aucune fonction de WordPress », délibérément : une fonction globale que le
+plugin déclarerait ailleurs serait un couplage tout aussi contraire à
+l'architecture.
+
+**L'arithmétique d'adresse est dans `Ip_Number`, et nulle part ailleurs.** Le
+masquage d'un préfixe CIDR et la composition d'une adresse depuis ses octets
+sont du calcul d'adresse : les écrire au niveau de l'octet dans `Rule` **et**
+dans `Ip_Number` aurait fini par diverger. Les méthodes de `Ip_Number`
+composent en outre leurs résultats sans passer par une fabrique nullable, ce
+qui supprime des branches qu'aucun test ne pouvait prendre (JE-019).
 
 ---
 
@@ -162,7 +172,7 @@ vérifie explicitement.
 | Objet | Porte | Fabriques |
 |---|---|---|
 | `Client_Address` | L'adresse retenue, sa famille, sa provenance | `from_connection()`, `from_header()`, `unknown()` |
-| `Ip_Number` | Un entier de longueur fixe et sa famille | `from_address()`, `min_of()`, `max_of()` |
+| `Ip_Number` | Un entier de longueur fixe et sa famille | `from_address()`, `from_ipv4_bytes()`, `min_of()`, `max_of()` |
 | `Rule` | Un intervalle borné, la famille, le texte d'origine | `literal()`, `wildcard()`, `cidr()`, `range()` |
 | `Rule_Rejection` | Le texte refusé, son numéro de ligne, le motif | `because()` |
 | `Rule_Set` | Les règles valides et les rejets | `from_text()`, `empty()` |

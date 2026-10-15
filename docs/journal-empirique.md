@@ -677,3 +677,93 @@ pas un vert, et seule une base détruite entre deux exécutions le dit. La
 seconde : les deux messages d'échec, écrits pour accuser l'amont, ont désigné le
 mauvais coupable pendant tout le diagnostic. Un message de contrat devrait
 nommer ce qu'il a constaté, pas la conclusion qu'il en tire.
+
+---
+
+## JE-018 — La couverture de chemins sur un WordPress complet fait tuer le processus
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 2, exigence de 100 % des
+branches sur le moteur (§11.6).
+
+Une couverture de lignes ne suffit pas à ce que demande le §11.6 :
+`if ( $a && $b )` tient sur une ligne et porte plusieurs chemins, et une
+condition jamais prise dans un sens se lit couverte alors qu'elle n'a jamais été
+éprouvée. Il faut donc la couverture de chemins d'Xdebug
+(`pathCoverage="true"`).
+
+Activée telle quelle, elle fait tuer le processus par le système : code de
+sortie **137**, aucun message, aucun récapitulatif PHPUnit. La cause n'est pas
+le plugin mais le volume : Xdebug instrumente tout ce que le processus exécute,
+et les suites autres que `unit` chargent un WordPress complet.
+
+Le piège est que `<include>` de PHPUnit ne protège de rien ici : il filtre les
+mesures **après** collecte. L'empreinte mémoire est celle de la collecte.
+
+**Conséquence** : `tests/bootstrap.php` pose un filtre d'instrumentation
+(`xdebug_set_filter`) limité à `src/`, et seulement dans les processus de
+mesure. La couverture de chemins passe alors sans difficulté.
+
+Deux morales. La première : un outil qui filtre en sortie ne dispense pas de
+filtrer en entrée. La seconde est la même qu'en JE-001 et JE-014 — un processus
+tué net ressemble à un succès pour qui ne lit que le code de sortie, et c'est
+`bin/run-suite.sh` qui a montré qu'il manquait un récapitulatif.
+
+---
+
+## JE-019 — La couverture de branches débusque du code défensif inatteignable
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 2, première mesure de branches
+sur `src/Address/` et `src/Rule/`.
+
+La première mesure a rapporté seize branches non prises. Aucune n'était un
+oubli de test : toutes étaient du code défensif que **rien ne pouvait
+atteindre**.
+
+| Branche | Pourquoi elle était inatteignable |
+|---|---|
+| `null === $family` après `inet_pton()` | La fonction ne renvoie que quatre ou seize octets |
+| `false === inet_ntop()` | La forme binaire est toujours de la longueur de sa famille |
+| `null === $low \|\| null === $high` dans la composition d'une règle | Les bornes étaient composées juste au-dessus, à la bonne longueur |
+| Dernier `return null` d'une conversion de longueur | Aucun appelant ne passait une autre longueur |
+| « le dernier segment n'est pas un joker » | Un segment littéral après un joker est déjà refusé par G-04 |
+| Échec de `preg_split()` | L'expression est une constante valide |
+
+Toutes ont été **supprimées**, et non annotées : l'arithmétique d'adresse est
+remontée dans `Ip_Number`, où elle compose ses résultats sans passer par une
+fabrique nullable ; la conversion de famille se fait par un ternaire dont les
+deux côtés sont exercés ; le découpage des lignes passe par `explode()`, qui ne
+peut pas échouer. Cinq autres branches étaient, elles, réellement atteignables
+et seulement non testées : elles ont reçu leur test.
+
+Une exclusion subsiste, et une seule : la portée de fichier, qui ne porte que la
+garde `defined( 'ABSPATH' ) || exit;` de SEC-15. Aucun test ne peut prendre sa
+seconde branche sans arrêter le processus. L'exclusion est nommée dans
+`bin/lib/check-branches.php` plutôt que semée en annotations dans le code — un
+endroit où on la relit, plutôt que vingt endroits où on l'oublie.
+
+**La morale est celle du §11.5** : une branche qu'aucun test ne peut prendre est
+indistinguable d'une branche fautive, et elle coûte à chaque relecture. Le
+plancher de branches n'a pas servi à prouver que le moteur est testé — il a
+servi à **supprimer du code**.
+
+---
+
+## JE-020 — `inet_pton()` accepte les zéros de tête, et ne dit pas comment il les lit
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 2, écriture de l'analyseur.
+
+`inet_pton( '010.0.0.1' )` renvoie l'adresse `10.0.0.1`. D'autres
+bibliothèques — et des systèmes d'exploitation — lisent le même texte comme
+`8.0.0.1`, par interprétation octale du zéro de tête. Le constat vaut aussi pour
+`10.0.0.01`.
+
+C'est exactement la situation que la grammaire close du §4.2 existe pour
+prévenir : l'auteur de la règle et la machine ne s'accordent pas sur ce que la
+règle désigne. Sur une liste d'autorisation, le désaccord se solde par un accès
+accordé à une adresse qu'on croyait exclue.
+
+**Conséquence** : l'analyseur refuse tout octet portant un zéro de tête, avec un
+motif qui lui est propre — `ambiguous_octet` —, et non le motif générique de
+faute de forme. Le contrôle s'applique aussi à la partie IPv4 d'une forme mixte
+(`::ffff:010.0.0.1`). Ce n'est pas une règle nouvelle : c'est FNC-20 appliqué à
+un cas que la grammaire ne nommait pas.

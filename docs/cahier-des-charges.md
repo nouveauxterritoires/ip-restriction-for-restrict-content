@@ -364,6 +364,26 @@ SEC-12. Une règle qui désigne toutes les adresses est presque toujours une
 erreur, et son effet — ouvrir tout le contenu restreint à l'internet — est
 exactement celui qu'on ne veut pas produire par inadvertance.
 
+**Trois précisions apportées par l'écriture de l'analyseur au lot 2**, chacune
+dans le sens du refus.
+
+G-05 est contrôlé sur l'**intervalle normalisé**, et non sur l'écriture. Les
+formes citées — `*`, `*.*.*.*`, `0.0.0.0/0`, `::/0` — ne sont pas une liste
+close : la propriété dangereuse est sémantique, et `0.0.0.0-255.255.255.255`
+ouvre tout aussi largement sans figurer dans la liste. Le contrôle porte donc
+sur « l'intervalle va-t-il d'un extrême à l'autre de sa famille », ce qui couvre
+toutes les écritures, présentes et à venir.
+
+Un octet portant un **zéro de tête** est refusé, avec un motif qui lui est
+propre. `inet_pton()` lit `010.0.0.1` comme `10.0.0.1` ; d'autres bibliothèques
+y lisent `8.0.0.1`, par interprétation octale. L'auteur de la règle et la machine
+ne s'accordent donc pas sur ce qu'elle désigne, et FNC-20 tranche (JE-020).
+
+Un joker peut porter sur **moins de quatre segments** : `149.58.*` vaut
+`149.58.*.*`. C'est la lecture qu'impose FNC-14 — « un joker remplace un ou
+plusieurs octets de fin » — et sans elle l'exemple documenté
+`149.58.*-149.60.*` serait une faute de forme.
+
 ### §4.3 Décision sur une règle
 
 Chaque forme de règle se ramène à une comparaison sur l'adresse convertie en
@@ -1060,6 +1080,18 @@ dont un défaut se traduit directement par un accès accordé à qui ne devait p
 l'avoir, et c'est aussi le seul qui soit entièrement pur, donc le seul où 100 %
 soit atteignable sans contorsion.
 
+**Comment les branches sont mesurées.** Le rapport Clover n'en transporte pas
+l'information : `bin/lib/check-branches.php` relit la mesure sérialisée
+fusionnée de php-code-coverage. La couverture de chemins d'Xdebug demande en
+outre de restreindre l'instrumentation à `src/`, faute de quoi le processus est
+tué par le système sur une suite qui charge WordPress (JE-018).
+
+Ce plancher a produit un effet qu'on n'attendait pas : sa première mesure a
+débusqué seize branches qu'**aucun test ne pouvait prendre**, toutes du code
+défensif inatteignable. Elles ont été supprimées, et non annotées (JE-019). Une
+seule exclusion subsiste, structurelle : la garde `ABSPATH` de SEC-15, dont la
+seconde branche arrête le processus.
+
 ### §11.7 Scénarios d'activation
 
 | Scénario | Attendu |
@@ -1135,7 +1167,7 @@ si son attestation a tourné.
 |---|---|---|
 | **0 — livré** | Outillage reproductible, amorçage conditionnel, contrôle des prérequis, avis d'administration, cinq suites déclarées, scanners, intégration continue | `make test-unit` et `make test-integration` verts ; `bin/scan-secrets.sh` et `bin/scan-placeholders.sh` verts ; `make lint` et `make stan` verts |
 | **1 — livré contre la variante gratuite** | Suite `contract` peuplée : contrôle de la branche chargée (§1.1), puis une accroche du §5.1 par test, contre les deux variantes. Sonde de capacités étendue et non mémorisée (§5.2.1), avec le libellé d'avis de E-05. Écran d'état des capacités | 36 tests `contract` passent contre Restrict Content 4.0.5 ; P-01 à P-04 sont établis dans la suite `integration` autant qu'un processus unique le permet (§11.2) ; les jobs `contract-free` et `contract-pro` sont déclarés. **Reste** : exécuter la suite contre la variante commerciale, ce qui lèvera V-10 ; V-11 demande un site 2.x provisionné ; V-13 est surveillé par un test |
-| **2 — moteur de correspondance** | Grammaire, analyseur, normalisation des quatre formes, IPv4 et IPv6, décision sur un ensemble. Aucun branchement WordPress | Suite `matching` : chaque format de FNC-13 à FNC-18 et chaque contrainte de G-01 à G-07 ont leur test. 100 % de lignes et de branches sur le répertoire du moteur |
+| **2 — livré** | Grammaire, analyseur, normalisation des quatre formes, IPv4 et IPv6, décision sur un ensemble. Aucun branchement WordPress | Suite `matching` : 93 tests ; chaque format de FNC-13 à FNC-18 et chaque contrainte de G-01 à G-07 ont le leur, avec le motif de refus attendu. 100 % des lignes **et des branches** sur `src/Address/` et `src/Rule/`, mesuré par `bin/lib/check-branches.php`. Un test de la suite `unit` échoue si un appel à WordPress apparaît dans ces répertoires. **Reste** : la résolution de l'adresse du visiteur, qui est le lot 3 |
 | **3 — résolution de l'adresse** | `Client_Address_Resolver`, proxys de confiance, lecture de droite à gauche, source de l'adresse | Suite `matching` : les onze scénarios du §11.3 passent. SEC-07 à SEC-10 et SEC-12 couvertes |
 | **4 — réglages globaux** | Écran de réglages, les deux listes, message d'erreur, proxys, validation à l'écriture, signalement des entrées rejetées, écran de diagnostic FNC-29 | Suites `integration` et `access` : aller-retour d'enregistrement, nonce et capacité exigés, entrée rejetée signalée. SEC-01, SEC-03, SEC-11 couvertes |
 | **5 — autorisation globale** | Branchement sur `rcp_member_can_access`, chemins connecté et déconnecté, contenus | Suite `access` : FNC-01, FNC-05, FNC-06, FNC-30, FNC-31. SEC-13, SEC-14 couvertes |
@@ -1216,7 +1248,7 @@ section est ce qui empêche de présenter une hypothèse comme un acquis.
 | **O-03** | Slug et marque tierce (directive 17 de WordPress.org) | **tranchée le 22 septembre 2026** | ADR-0008. **Le slug est conservé.** La directive 17 n'interdit que le **début** du slug : `ip-restriction-for-restrict-content` commence par une fonction générique, et la mention de la marque après « for » est précisément la forme recommandée. Renommer se serait écarté de la recommandation pour se prémunir d'une règle inapplicable, au prix de la découvrabilité et d'une migration de text domain, de namespace et de préfixes (ADR-0001). La mention de non-affiliation est **maintenue** : elle traite une exigence distincte (§14.3). Révision si le produit amont change de nom ou si l'éditeur réclame |
 | **O-04** | Stockage du réglage de niveau | **tranchée** | ADR-0004. Métadonnée de niveau via l'API de la dépendance |
 | **O-05** | Étendue du support IPv6 | **tranchée** | ADR-0005. Littéral et CIDR IPv6 ; jokers et plages à bornes jokers **refusés** en IPv6 |
-| **O-06** | Sémantique de la plage à bornes jokers | **tranchée provisoirement** | §4.3 : la borne gauche prend son minimum, la borne droite son maximum. La documentation amont donne l'exemple `149.58.*-149.60.*` sans le définir. Autre lecture possible : intersection du joker et de la plage, qui exclurait `149.59.x.x`. La lecture retenue est la seule compatible avec le caractère inclusif documenté des plages, mais elle n'est pas établie par la source. **À confirmer en recette au lot 2 ; si le doute persiste, documenter la sémantique retenue dans la documentation utilisateur plutôt que de l'inventer** |
+| **O-06** | Sémantique de la plage à bornes jokers | **tranchée provisoirement, et implémentée au lot 2** | §4.3 : la borne gauche prend son minimum, la borne droite son maximum. La documentation amont donne l'exemple `149.58.*-149.60.*` sans le définir. Autre lecture possible : intersection du joker et de la plage, qui exclurait `149.59.x.x`. La lecture retenue est la seule compatible avec le caractère inclusif documenté des plages, mais elle n'est pas établie par la source. Le lot 2 l'a écrite et la fixe par un test nommé : `149.58.*-149.60.*` accepte `149.58.0.0`, `149.59.1.1` et `149.60.255.255`, refuse `149.57.255.255` et `149.61.0.0`. **Ce qui reste dû est la documentation utilisateur** : la sémantique retenue y sera énoncée, puisque la source ne la donne pas |
 | **O-07** | Liste fermée ou saisie libre pour le nom de l'en-tête de transfert | **tranchée** | §7.1 : liste fermée de quatre valeurs. Une saisie libre ajoute une surface d'erreur sans bénéfice ; le filtre `ip_restriction_for_restrict_content_client_address` couvre le cas restant |
 | **O-08** | Comportement sur multisite : réglages par site ou par réseau | **ouverte** | **(a)** Par site, ce que §11.7 suppose : simple, mais un réseau de cent sites se configure cent fois. **(b)** Réglage de réseau avec surcharge par site : utile, mais double le modèle de données et les écrans. **À trancher au lot 4** |
 
