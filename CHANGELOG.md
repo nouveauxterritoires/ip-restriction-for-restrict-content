@@ -5,6 +5,68 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 5 : autorisation globale. **Le plugin accorde ses premiers accès** : une
+adresse inscrite dans la liste d'autorisation globale accède à tout contenu
+restreint du site, qu'elle soit connectée ou non.
+
+### Ajouté
+
+- Branchement de la décision sur `rcp_member_can_access`, la seule accroche que
+  la dépendance applique sur les trois chemins de sa décision (§5.1). Le
+  branchement n'a donc pas à choisir lequel sera emprunté : il répond de la même
+  façon d'où qu'il vienne, et la suite `contract` du lot 1 établit les trois.
+- **Le plugin n'accorde que.** Si la dépendance accorde déjà, il n'y a rien à
+  ajouter ; si elle refuse, le plugin accorde ou ne se prononce pas, jamais ne
+  retire. C'est FNC-31, et c'est ce qui garantit qu'un visiteur hors liste
+  obtienne exactement le comportement de la dépendance seule. La décision est
+  nommée « non traité » et non « refusé », pour que personne ne traduise un jour
+  ce refus en blocage réel.
+- `Policy\Access_Policy` ne reçoit ni utilisateur, ni adhésion, ni contenu :
+  elle ne **peut** donc pas en dépendre. C'est la forme la plus solide que
+  puisse prendre FNC-05, et un test l'établit sur la signature de la méthode.
+- Marquage de non-cachabilité dès qu'une autorisation s'applique, et seulement
+  alors (SEC-14). Un site qui met ses pages en cache et qui sert à un visiteur
+  autorisé la version complète d'un contenu restreint l'expose à tous les
+  visiteurs suivants : le contournement se propage sans qu'aucune liste ne le
+  décide, et il survit à la correction de la liste jusqu'à l'expiration du
+  cache. Marquer toutes les réponses, à l'inverse, coûterait le cache du site
+  entier — quatre tests établissent que seules les réponses élargies le sont.
+- SEC-13 : une autorisation accorde la lecture du contenu et **rien d'autre**.
+  `current_user_can()` est inchangé pour quatre capacités, le visiteur n'est pas
+  connecté, et aucun client ni adhésion n'est créé.
+- Points d'extension du §8 sur le chemin d'accès — `client_address`,
+  `trusted_proxies`, `rules`, `access_decision` et l'action `access_granted` —,
+  avec leurs noms déclarés en constantes dans `Support\Extension_Points` et
+  nulle part ailleurs : un nom écrit en clair à deux endroits finit par diverger
+  d'un caractère, et le filtre cesse alors silencieusement d'être appelé.
+- La contrainte de sécurité du §8 est vérifiée par trois tests : un filtre peut
+  **retirer** un octroi, il ne peut pas en **créer**, et une valeur de retour
+  qui n'est pas une décision retire l'octroi plutôt que de le laisser passer.
+  Sans cette contrainte, n'importe quel plugin tiers deviendrait un fournisseur
+  d'accès au contenu payant, hors de portée de l'administrateur qui a rempli les
+  listes.
+- L'action d'octroi transporte une adresse **expurgée** (SEC-06).
+- `.coverage-baseline` passe de 99,28 % à 99,33 %.
+
+### Levé
+
+- Point ouvert V-01 : une adresse autorisée l'emporte bien sur une adhésion
+  **expirée** (JE-022). V-01 prévoyait explicitement l'échec — « si le filtre
+  n'est pas atteint sur ce chemin, l'attendu est révisé, pas contourné » — et le
+  scénario joué dans la suite `access` confirme l'attendu :
+  `RCP_Customer::can_access()` applique `rcp_member_can_access` sur son
+  résultat, donc le filtre est atteint avec `false` comme sur le chemin
+  déconnecté. Aucune contrainte de conception n'en découle.
+
+### Documentation
+
+- JE-022 : le constat sur l'adhésion expirée, et le détail d'écriture de test
+  qui l'avait d'abord fait échouer — l'adresse est mémorisée par requête, et un
+  test qui modifie `$_SERVER` en cours de route simule deux requêtes dans une
+  seule.
+
+---
+
 Lot 4 : réglages globaux. Les listes se saisissent, se valident et se stockent ;
 personne ne les consulte encore pour décider d'un accès — c'est le lot 5 qui
 branchera la décision sur la dépendance.

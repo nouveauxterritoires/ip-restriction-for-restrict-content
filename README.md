@@ -9,11 +9,11 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Le plugin ne restreint rien pour le moment.** Les lots 0 à 4 sont livrés : les
-listes se saisissent et se valident, l'adresse du visiteur se résout, le moteur
-dit si elle correspond — mais rien ne branche encore cette décision sur la
-dépendance, et aucun accès n'est donc accordé ni refusé. Ce qui est livré et
-vérifié :
+**Le plugin accorde ses premiers accès.** Les lots 0 à 5 sont livrés : une
+adresse inscrite dans la liste d'autorisation globale accède à tout contenu
+restreint du site, qu'elle soit connectée ou non. Il manque les deux autres
+portées — par niveau d'adhésion et par contenu — et le blocage d'inscription.
+Ce qui est livré et vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -33,14 +33,16 @@ vérifié :
 | Écran de réglages sous le menu de la dépendance : les deux listes, le message de blocage, les proxys, l'en-tête à lire, la suppression à la désinstallation | `src/Admin/Settings_Page.php`, suite `access` |
 | Validation à l'écriture avec la même sévérité qu'à la lecture, et avis **persistant** nommant chaque entrée ignorée, sa ligne et son motif | `src/Settings/Settings_Validator.php`, `src/Admin/Rejection_Notice.php` |
 | Écran de diagnostic : l'adresse retenue pour la requête en cours et sa provenance | `src/Admin/Settings_Page.php`, suite `access` |
-| Les cinq suites de tests sont peuplées — 282 tests | `phpunit.xml.dist`, `tests/` |
+| Autorisation globale : une adresse de la liste accède à tout contenu restreint, connectée ou non, sans obtenir aucune capacité | `src/Integration/Content_Access.php`, `src/Policy/`, suite `access` |
+| Une réponse élargie par une autorisation n'entre pas dans un cache partagé | `src/Integration/Cache_Guard.php` |
+| Points d'extension du §8 sur le chemin d'accès, dont un filtre qui ne peut que **retirer** un octroi | `src/Support/Extension_Points.php`, suite `access` |
+| Les cinq suites de tests sont peuplées — 313 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
-**Rien d'autre.** Les listes existent, se valident et se stockent ; personne ne
-les consulte encore pour décider d'un accès. C'est le lot 5 qui branchera la
-décision sur la dépendance, et les lots 7 et 8 qui ajouteront les portées par
-niveau d'adhésion et par contenu. Ce que le plugin
+**Rien d'autre.** La liste de blocage d'inscription est saisissable mais n'est
+pas encore consultée : c'est le lot 6. Les portées par niveau d'adhésion et par
+contenu sont les lots 7 et 8, et la couverture des taxonomies le lot 9. Ce que le plugin
 fera est spécifié dans le cahier des charges ; le découpage en lots est au §13.
 
 La suite `contract` est exécutée contre les **deux** variantes en intégration

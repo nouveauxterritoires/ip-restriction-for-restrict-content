@@ -1,9 +1,10 @@
 # Architecture
 
 Ce document décrit la forme prévue du code. Au moment où il est écrit, les
-lots 0 à 4 sont livrés : l'amorçage conditionnel, la sonde de capacités,
+lots 0 à 5 sont livrés : l'amorçage conditionnel, la sonde de capacités,
 l'écran d'état, le moteur de correspondance, la résolution de l'adresse du
-visiteur, et les réglages globaux avec leur écran. Tout le reste est une cible, pas un état. Les cases non livrées
+visiteur, les réglages globaux avec leur écran, et l'autorisation globale
+branchée sur la dépendance. Tout le reste est une cible, pas un état. Les cases non livrées
 sont signalées comme telles dans l'arborescence du §3.
 
 Référence : cahier des charges §4 (règles de décision), §5 (intégration),
@@ -107,10 +108,9 @@ src/
 │   └── Match_Result.php                livré — correspondance + règle responsable
 │
 ├── Policy/                             décision pure — les portées
-│   ├── Scope.php                       énumération : globale | niveau | contenu
-│   ├── Access_Request.php              objet de valeur : adresse, contenu, restrictions applicables
-│   ├── Access_Policy.php               FNC-01 à FNC-06, non-transitivité
-│   ├── Access_Decision.php             objet de valeur : accordé | non traité + portée responsable
+│   ├── Scope.php                       livré — énumération : globale | niveau | contenu
+│   ├── Access_Policy.php               livré — FNC-01, FNC-05 ; non-transitivité au lot 7
+│   ├── Access_Decision.php             livré — accordé | non traité + portée et règle responsables
 │   ├── Registration_Policy.php         FNC-07 à FNC-09
 │   └── Registration_Decision.php       objet de valeur
 │
@@ -125,10 +125,10 @@ src/
 │
 ├── Integration/                        application — branchements sur la dépendance
 │   ├── Capability_Probe.php            livré — sonde du §5.2, jamais mémorisée (P-01…P-04)
-│   ├── Content_Access.php              rcp_member_can_access
+│   ├── Content_Access.php              livré — filtre rcp_member_can_access, FNC-31
+│   ├── Cache_Guard.php                 livré — SEC-14, non-cachabilité d'une réponse élargie
 │   ├── Term_Access.php                 rcp_get_term_restrictions, garde-fous du §5.1.1
-│   ├── Registration_Guard.php          rcp_form_errors
-│   └── Cache_Guard.php                 SEC-14, non-cachabilité d'une réponse élargie
+│   └── Registration_Guard.php          rcp_form_errors
 │
 ├── Admin/                              application — écrans
 │   ├── Requirements_Notice.php         livré — avis de prérequis, cause et action de retour
@@ -143,7 +143,7 @@ src/
 │
 └── Support/
     ├── Redactor.php                    livré — SEC-06, expurgation avant journalisation
-    └── Extension_Points.php            noms des hooks du §8, en un seul endroit
+    └── Extension_Points.php            livré — noms des hooks du §8, en un seul endroit
 ```
 
 Trois répertoires — `Address/`, `Rule/`, `Policy/` — contiennent la totalité de
@@ -163,6 +163,13 @@ en cas d'erreur. Aucun accesseur de `Settings`, aucun accesseur de
 `Validated_Settings` n'est donc paramétré par un nom de liste, et un test de la
 suite `unit` inspecte l'interface publique pour l'établir. L'écran les rend par
 deux appels distincts, avec deux champs nommés séparément.
+
+**L'adresse du visiteur est résolue une fois par requête.** La mémorisation est
+portée par l'instance du branchement, et l'instance vit le temps d'une requête :
+un contenu restreint peut être évalué des dizaines de fois dans une page, et
+résoudre l'adresse autant de fois n'apprendrait rien de plus. La frontière est
+la même que celle de la sonde de capacités, et pour la même raison — ce qui peut
+changer entre deux requêtes ne doit pas être mémorisé au-delà.
 
 **L'arithmétique d'adresse est dans `Ip_Number`, et nulle part ailleurs.** Le
 masquage d'un préfixe CIDR et la composition d'une adresse depuis ses octets
@@ -223,6 +230,12 @@ caractère, et le filtre cesse silencieusement d'être appelé. La constante ren
 la divergence impossible et la renomination sûre.
 
 Deux règles d'implémentation portent une conséquence de sécurité :
+
+Les deux règles sont livrées au lot 5 sur la décision d'accès, et vérifiées par
+trois tests : l'un établit qu'un filtre peut retirer un octroi, l'autre qu'il ne
+peut pas en créer, le troisième qu'une valeur de retour qui n'est pas une
+décision retire l'octroi plutôt que de le laisser passer — la fermeture sur
+l'inconnu vaut aussi pour ce que renvoie un tiers.
 
 | Règle | Motif |
 |---|---|

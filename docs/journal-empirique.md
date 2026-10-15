@@ -800,3 +800,41 @@ La morale est désagréable et utile : **un outil de mesure est un outil comme u
 autre, et il a des défauts**. Celui-ci se signale par un échec, donc on le
 corrige ; le même défaut dans une mesure de lignes aurait annoncé une
 couverture plus haute qu'elle n'est, et personne ne l'aurait vu.
+
+---
+
+## JE-022 — Le filtre d'accès est bien atteint derrière une adhésion expirée
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 5, test de la vérification V-01.
+
+V-01 demandait si une adresse autorisée l'emporte sur une adhésion **expirée**,
+et prévoyait explicitement l'échec : « si la recette montre que le filtre n'est
+pas atteint sur ce chemin — un client existe, donc le chemin passe par
+`class-rcp-customer.php` et non par `member-functions.php:101` —, le point
+remonte en contrainte de conception et l'attendu est révisé, pas contourné ».
+
+**L'attendu est confirmé.** Le scénario a été joué dans la suite `access` : un
+client, une adhésion au niveau « Or » au statut `expired` avec une date
+d'expiration passée, un contenu restreint à ce niveau. Sans autorisation, la
+dépendance refuse. Avec l'adresse inscrite dans la liste d'autorisation globale,
+l'accès est accordé.
+
+La raison est lisible dans la source : `RCP_Customer::can_access()` parcourt les
+adhésions du client, retient `false` si aucune n'accorde l'accès, et applique
+`rcp_member_can_access` **sur ce résultat**
+(`core/includes/customers/class-rcp-customer.php:806`). Le filtre est donc
+atteint avec `false`, exactement comme sur le chemin déconnecté. Une adhésion
+expirée n'est pas un cas particulier du point de vue du filtre : c'est une
+adhésion qui n'accorde rien.
+
+**Conséquence** : V-01 est levé, et aucune contrainte de conception n'en
+découle. Le test reste, et change de nature — il surveille désormais une
+propriété établie.
+
+Un détail d'écriture de test mérite d'être noté, parce qu'il a d'abord fait
+échouer ce scénario : l'adresse retenue est mémorisée par **instance** du
+branchement, et l'instance vit le temps d'une requête (§5.2.1 appliqué à
+l'adresse). Un test qui modifie `$_SERVER` en cours de route doit donc rebrancher
+une instance neuve, sans quoi il éprouve une situation qu'aucune requête réelle
+ne présente. Le premier échec n'était pas un défaut du plugin : c'était un test
+qui simulait deux requêtes dans une seule.

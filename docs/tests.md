@@ -3,8 +3,8 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 4** : les **cinq** suites sont peuplées — `unit` (78 tests),
-`integration` (26), `contract` (36), `matching` (120) et `access` (22). Chacune
+**État au lot 5** : les cinq suites sont peuplées — `unit` (79 tests),
+`integration` (26), `contract` (36), `matching` (127) et `access` (45). Chacune
 a son job d'intégration continue, et la suite `contract` est exécutée par les
 jobs `contract-free` et `contract-pro` : **les deux ont tourné et sont verts**
 depuis le 15 octobre 2026, ce qui a levé le point ouvert V-10.
@@ -215,8 +215,11 @@ qu'ici serait mentir sur ce qu'ils établissent.
 
 ### 2.5 `access` — le comportement observable
 
-**Peuplée au lot 4** : `SettingsScreenTest` et `RejectionNoticeTest` —
-22 tests. Ils portent ce qui garde l'écriture des réglages, parce qu'un écran
+**Peuplée aux lots 4 et 5** : `SettingsScreenTest`, `RejectionNoticeTest`,
+`ContentAccessTest` et `ExtensionPointsTest` — 45 tests. Les tests du lot 5
+passent par `rcp_user_can_access()`, la fonction de la dépendance, et non par la
+politique interne : ce qui compte est le comportement observable, moteur et
+branchement compris. C'est aussi la suite qui a levé V-01. Ils portent ce qui garde l'écriture des réglages, parce qu'un écran
 qui accorde des accès est une surface d'attaque : qui peut y écrire peut ouvrir
 tout le contenu restreint du site. L'ordre des contrôles y est testé pour
 lui-même — une requête à la fois sans droit et sans nonce doit être refusée
@@ -233,7 +236,7 @@ réellement restreints :
 | Non-transitivité | **Le test central.** Autorisation sur « Argent », contenu réservé à « Or » : refusé |
 | Cumul | Une seule portée satisfaite suffit ; deux portées satisfaites n'ont pas d'effet supplémentaire |
 | Portée par contenu | Autorisation sur le contenu A : A est lisible, B ne l'est pas |
-| Adhésion expirée | V-01 : autorisation et adhésion expirée, sur les deux chemins — avec client et sans client |
+| Adhésion expirée | **V-01, levé au lot 5** : l'autorisation l'emporte sur une adhésion expirée, établi avec un client et une adhésion au statut `expired` (JE-022). Le volet « autorisation posée sur le niveau » se jouera au lot 7 |
 | Blocage d'inscription | La soumission est rejetée, et le message apparaît par le canal de la dépendance |
 | Asymétrie | Une adresse en liste de blocage seule n'obtient **aucun** accès au contenu, et une adresse en liste d'autorisation seule n'est **pas** bloquée à l'inscription (A-01) |
 | Entrée rejetée | Une entrée invalide dans la liste de blocage produit l'avis persistant (A-03, SEC-11) |
