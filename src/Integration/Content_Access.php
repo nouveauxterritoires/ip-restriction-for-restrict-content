@@ -32,6 +32,7 @@ use Ip_Restriction_For_Restrict_Content\Address\Client_Address_Resolver;
 use Ip_Restriction_For_Restrict_Content\Http\Server_Environment;
 use Ip_Restriction_For_Restrict_Content\Policy\Access_Decision;
 use Ip_Restriction_For_Restrict_Content\Policy\Access_Policy;
+use Ip_Restriction_For_Restrict_Content\Policy\Scope;
 use Ip_Restriction_For_Restrict_Content\Rule\Rule_Set;
 use Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository;
 use Ip_Restriction_For_Restrict_Content\Support\Extension_Points;
@@ -103,7 +104,7 @@ final class Content_Access {
 			return true;
 		}
 
-		$decision = $this->decide();
+		$decision = $this->decide( (int) $post_id );
 
 		if ( $decision->is_not_handled() ) {
 			return (bool) $can_access;
@@ -118,15 +119,17 @@ final class Content_Access {
 		 * relève de sa responsabilité, ce que le plugin lui remet relève de la
 		 * nôtre (SEC-06).
 		 *
-		 * @param string $address Adresse expurgée du visiteur.
-		 * @param string $scope   Portée ayant accordé l'accès.
-		 * @param int    $post_id Contenu demandé.
+		 * @param string   $address  Adresse expurgée du visiteur.
+		 * @param string   $scope    Portée ayant accordé l'accès.
+		 * @param int      $post_id  Contenu demandé.
+		 * @param int|null $scope_id Identifiant du niveau, null pour la portée globale.
 		 */
 		do_action(
 			Extension_Points::ACCESS_GRANTED,
 			Redactor::redact_address( $this->resolved_address() ),
 			$decision->scope()->value,
-			(int) $post_id
+			(int) $post_id,
+			$decision->scope_id()
 		);
 
 		return true;
@@ -135,25 +138,77 @@ final class Content_Access {
 	/**
 	 * Décide de l'accès pour la requête en cours.
 	 *
+	 * @param int $post_id Contenu demandé.
 	 * @return Access_Decision
 	 */
-	private function decide(): Access_Decision {
+	private function decide( int $post_id ): Access_Decision {
 		$settings = $this->repository->load();
 
 		/**
-		 * Complète la liste d'autorisation globale depuis une source externe.
+		 * Complète une liste d'autorisation depuis une source externe.
 		 *
-		 * @param string $text  Texte de la liste, une entrée par ligne.
-		 * @param string $scope Portée concernée.
+		 * @param string   $text     Texte de la liste, une entrée par ligne.
+		 * @param string   $scope    Portée concernée.
+		 * @param int|null $scope_id Identifiant du niveau ou du contenu, null pour la portée globale.
 		 */
-		$text = (string) apply_filters( Extension_Points::RULES, $settings->allow_list(), 'global' );
+		$text = (string) apply_filters(
+			Extension_Points::RULES,
+			$settings->allow_list(),
+			Scope::GLOBAL_LIST->value,
+			null
+		);
 
 		$decision = Access_Policy::decide(
 			$this->resolved_address()->number(),
-			Rule_Set::from_text( $text )
+			Rule_Set::from_text( $text ),
+			$this->applicable_level_lists( $post_id )
 		);
 
 		return $this->filtered( $decision );
+	}
+
+	/**
+	 * Listes des niveaux qui restreignent le contenu demandé, et d'eux seuls.
+	 *
+	 * **C'est ici que FNC-04 est obtenu.** La politique ne reçoit que ces
+	 * listes : une autorisation posée sur un autre niveau n'est pas même
+	 * consultée. L'implémentation naïve — passer toutes les listes de niveau et
+	 * laisser la politique trancher — violerait la non-transitivité
+	 * silencieusement, et transformerait chaque autorisation de niveau en
+	 * autorisation globale.
+	 *
+	 * @param int $post_id Contenu demandé.
+	 * @return array<int, Rule_Set>
+	 */
+	private function applicable_level_lists( int $post_id ): array {
+		if ( 0 === $post_id ) {
+			return array();
+		}
+
+		$restrictions = rcp_get_post_restrictions( $post_id );
+		$levels       = $restrictions['membership_levels'] ?? array();
+
+		if ( ! is_array( $levels ) || array() === $levels ) {
+			return array();
+		}
+
+		$lists = array();
+
+		foreach ( $levels as $level_id ) {
+			$text = $this->repository->load_level_list( (int) $level_id );
+
+			/** This filter is documented in src/Integration/Content_Access.php */
+			$text = (string) apply_filters(
+				Extension_Points::RULES,
+				$text,
+				Scope::MEMBERSHIP_LEVEL->value,
+				(int) $level_id
+			);
+
+			$lists[ (int) $level_id ] = Rule_Set::from_text( $text );
+		}
+
+		return $lists;
 	}
 
 	/**

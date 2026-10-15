@@ -43,25 +43,36 @@ final class Access_Decision {
 	private ?Rule $rule;
 
 	/**
+	 * Identifiant de l'objet qui porte la portée — niveau ou contenu —, ou
+	 * null pour la portée globale.
+	 *
+	 * @var int|null
+	 */
+	private ?int $scope_id;
+
+	/**
 	 * Construit une décision.
 	 *
-	 * @param Scope|null $scope Portée ayant accordé l'accès.
-	 * @param Rule|null  $rule  Règle responsable.
+	 * @param Scope|null $scope    Portée ayant accordé l'accès.
+	 * @param Rule|null  $rule     Règle responsable.
+	 * @param int|null   $scope_id Identifiant du niveau ou du contenu.
 	 */
-	private function __construct( ?Scope $scope, ?Rule $rule ) {
-		$this->scope = $scope;
-		$this->rule  = $rule;
+	private function __construct( ?Scope $scope, ?Rule $rule, ?int $scope_id ) {
+		$this->scope    = $scope;
+		$this->rule     = $rule;
+		$this->scope_id = $scope_id;
 	}
 
 	/**
 	 * Accès accordé par une portée.
 	 *
-	 * @param Scope $scope Portée ayant accordé l'accès.
-	 * @param Rule  $rule  Règle responsable.
+	 * @param Scope    $scope    Portée ayant accordé l'accès.
+	 * @param Rule     $rule     Règle responsable.
+	 * @param int|null $scope_id Identifiant du niveau ou du contenu, null pour la portée globale.
 	 * @return self
 	 */
-	public static function granted_by( Scope $scope, Rule $rule ): self {
-		return new self( $scope, $rule );
+	public static function granted_by( Scope $scope, Rule $rule, ?int $scope_id = null ): self {
+		return new self( $scope, $rule, $scope_id );
 	}
 
 	/**
@@ -70,7 +81,7 @@ final class Access_Decision {
 	 * @return self
 	 */
 	public static function not_handled(): self {
-		return new self( null, null );
+		return new self( null, null, null );
 	}
 
 	/**
@@ -107,5 +118,18 @@ final class Access_Decision {
 	 */
 	public function rule(): ?Rule {
 		return $this->rule;
+	}
+
+	/**
+	 * Identifiant de l'objet qui porte la portée.
+	 *
+	 * C'est ce qui permet au diagnostic de dire « le niveau 7 a accordé » et
+	 * non seulement « un niveau a accordé » : sur un site à dix niveaux, la
+	 * seconde réponse n'aide pas.
+	 *
+	 * @return int|null Null pour la portée globale, qui n'a pas d'identifiant.
+	 */
+	public function scope_id(): ?int {
+		return $this->scope_id;
 	}
 }

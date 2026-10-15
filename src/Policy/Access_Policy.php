@@ -11,9 +11,19 @@
  * (V-01).
  *
  * Les portées se cumulent par disjonction (FNC-06) : la première qui accorde
- * l'emporte, et la décision porte laquelle. À ce lot, seule la portée globale
- * existe ; les lots 7 et 8 ajouteront les deux autres, et la non-transitivité
- * de FNC-04 se vérifiera sur la portée rapportée.
+ * l'emporte, et la décision porte laquelle. La portée globale est consultée
+ * d'abord — l'ordre ne change pas le fait d'accorder, la disjonction étant
+ * commutative, mais il change la portée **rapportée**, et la plus large est
+ * celle qui explique l'accès.
+ *
+ * **FNC-04 — la non-transitivité — tient à ce que cette méthode ne reçoit
+ * pas.** Les listes de niveau qu'on lui passe sont celles des niveaux qui
+ * restreignent le contenu demandé, et elles seules : une autorisation posée sur
+ * un autre niveau n'est pas même consultée. Ce n'est pas une comparaison qui
+ * échoue, c'est une liste qui n'entre pas dans le calcul. L'implémentation
+ * naïve — une seule liste consultée quelle que soit la restriction rencontrée —
+ * violerait FNC-04 silencieusement, et transformerait chaque autorisation de
+ * niveau en autorisation globale.
  *
  * @package Ip_Restriction_For_Restrict_Content
  */
@@ -36,15 +46,24 @@ final class Access_Policy {
 	/**
 	 * Décide de l'accès pour une adresse.
 	 *
-	 * @param Ip_Number|null $address     Adresse évaluée, ou null si indéterminable.
-	 * @param Rule_Set       $global_list Liste d'autorisation globale.
+	 * @param Ip_Number|null       $address     Adresse évaluée, ou null si indéterminable.
+	 * @param Rule_Set             $global_list Liste d'autorisation globale.
+	 * @param array<int, Rule_Set> $level_lists Listes des niveaux qui restreignent le contenu demandé, indexées par identifiant de niveau.
 	 * @return Access_Decision
 	 */
-	public static function decide( ?Ip_Number $address, Rule_Set $global_list ): Access_Decision {
-		$match = Matcher::match( $address, $global_list );
+	public static function decide( ?Ip_Number $address, Rule_Set $global_list, array $level_lists ): Access_Decision {
+		$global = Matcher::match( $address, $global_list );
 
-		if ( $match->is_match() ) {
-			return Access_Decision::granted_by( Scope::GLOBAL_LIST, $match->rule() );
+		if ( $global->is_match() ) {
+			return Access_Decision::granted_by( Scope::GLOBAL_LIST, $global->rule() );
+		}
+
+		foreach ( $level_lists as $level_id => $level_list ) {
+			$match = Matcher::match( $address, $level_list );
+
+			if ( $match->is_match() ) {
+				return Access_Decision::granted_by( Scope::MEMBERSHIP_LEVEL, $match->rule(), (int) $level_id );
+			}
 		}
 
 		return Access_Decision::not_handled();
