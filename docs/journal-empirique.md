@@ -838,3 +838,65 @@ l'adresse). Un test qui modifie `$_SERVER` en cours de route doit donc rebranche
 une instance neuve, sans quoi il éprouve une situation qu'aucune requête réelle
 ne présente. Le premier échec n'était pas un défaut du plugin : c'était un test
 qui simulait deux requêtes dans une seule.
+
+---
+
+## JE-023 — La dépendance interpole les messages d'erreur sans les échapper
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 6, écriture du blocage
+d'inscription.
+
+`rcp_get_error_messages_html()` compose le balisage des erreurs du formulaire
+d'inscription ainsi (`core/includes/error-tracking.php:47`) :
+
+```php
+$html .= '<p class="rcp_error ' . esc_attr( $code ) . '" role="listitem"><span>'
+    . $message . '</span></p>';
+```
+
+Le **code** de l'erreur est échappé ; le **message** ne l'est pas. Tout ce qui
+est ajouté à `rcp_errors()` est donc rendu comme du balisage dans la page du
+visiteur.
+
+**Conséquence.** L'échappement du message de blocage n'est pas une précaution
+redondante : c'est la **seule** barrière. Il est fait par
+`Registration_Guard`, juste avant l'ajout au collecteur, et après l'éventuel
+filtre — un filtre est du code tiers, et lui faire confiance pour l'échappement
+reviendrait à ne pas échapper (§8.1).
+
+Deux tests l'établissent : un message de réglage porteur de balises, et un
+message injecté par un filtre. Les deux ressortent inertes.
+
+Ce constat ne vaut pas reproche à l'amont : le message attendu là est un
+libellé produit par le code de la dépendance, pas une saisie d'administrateur.
+C'est **notre** message qui vient d'un champ de texte libre, donc c'est à nous
+de l'échapper.
+
+---
+
+## JE-024 — Le collecteur d'erreurs de la dépendance est un singleton de processus
+
+**Date** : 15 octobre 2026 · **Contexte** : lot 6, suite `access`.
+
+`rcp_errors()` renvoie un `WP_Error` conservé en statique. Dans une requête, il
+vit le temps de la requête et tout va bien. Dans un processus de test, il
+survit d'un test à l'autre.
+
+Deux effets, et le second est sournois. Les erreurs s'accumulent, donc une
+inscription qui devait réussir échoue parce qu'un test précédent a laissé une
+erreur. Et comme `WP_Error::get_error_message( $code )` renvoie le **premier**
+message enregistré pour un code, c'est le message du premier test qui s'affiche
+dans tous les suivants : un test qui vérifie un message personnalisé lit le
+message par défaut, et conclut que le plugin ignore le réglage.
+
+Sept tests sur quatorze échouaient ainsi, tous avec le même symptôme — le
+message par défaut là où on attendait autre chose. Aucun ne portait sur le
+défaut.
+
+**Conséquence** : les tests qui provoquent le traitement d'une inscription
+vident le collecteur avant chaque passage. La correction appartient au
+processus de test, puisque le problème y appartient.
+
+La morale rejoint celle du §6 de `docs/tests.md` — « ne jamais dépendre de
+l'état laissé par un test précédent ». Ici l'état n'était pas laissé par nous :
+il était laissé **dans** la dépendance, ce qui est plus difficile à voir.

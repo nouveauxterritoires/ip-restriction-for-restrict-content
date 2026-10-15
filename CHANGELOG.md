@@ -5,6 +5,68 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 6 : blocage d'inscription. **Les deux fonctions du plugin existent
+désormais à la portée globale** : une adresse de la liste d'autorisation accède
+au contenu restreint, une adresse de la liste de blocage ne peut pas s'inscrire.
+
+### Ajouté
+
+- Branchement du blocage sur `rcp_form_errors`, et non sur
+  `rcp_before_form_errors` : la première accroche est atteinte **après** la
+  validation du niveau d'adhésion, et s'accrocher avant ferait porter au plugin
+  un refus que la dépendance aurait de toute façon prononcé, en masquant la
+  vraie cause à l'utilisateur.
+- `Policy\Registration_Policy` et `Registration_Decision`, **distinctes** de
+  celles de l'accès. A-01 interdit tout chemin commun entre les deux listes :
+  deux classes, deux objets de décision, deux branchements, deux instances.
+  Aucune ne reçoit la liste de l'autre, et un test l'établit sur les signatures.
+- L'asymétrie de A-01 est vérifiée dans les **deux** sens : une adresse bloquée
+  n'obtient ni plus ni moins d'accès au contenu que ce que la dépendance lui
+  accorde (FNC-08), et une adresse de la liste d'autorisation n'est pas bloquée
+  à l'inscription. C'est le test qui attraperait une confusion de champ.
+- Le blocage ne touche pas l'authentification (FNC-09) : un compte existant se
+  connecte depuis une adresse bloquée, et un test l'établit par
+  `wp_authenticate()`.
+- Message par défaut traduisible, message personnalisé rendu tel quel
+  (FNC-10, I18N-04) : traduire la chaîne d'un administrateur reviendrait à la
+  réécrire.
+- Le message ne révèle ni l'adresse, ni la règle, ni l'existence d'une liste, et
+  il est **identique quelle que soit la règle qui a filtré** (FNC-11, SEC-17) :
+  un message qui varierait permettrait de deviner le contenu de la liste par
+  essais successifs.
+- Points d'extension du blocage : filtre `registration_blocked`, filtre
+  `blocked_message` dont le retour est échappé **après** le filtre, et action
+  `registration_block_applied` qui transporte une adresse expurgée.
+- Stubs de la dépendance générés et versionnés (`stubs/`, 35 227 lignes) : c'est
+  le premier lot où `src/` appelle une fonction de la dépendance, et l'analyse
+  statique doit pouvoir la connaître. Ils sont produits par
+  `bin/generate-stubs.sh` depuis l'installation réelle et jamais édités à la
+  main (§12.4) ; l'archive distribuable ne les embarque pas.
+
+### Corrigé
+
+- Le filtre et l'action du blocage portaient le **même nom** dans le cahier des
+  charges §8.1 et §8.2. WordPress partage un seul registre entre actions et
+  filtres : un même nom ferait appeler les greffons du filtre par l'action, avec
+  le mauvais nombre d'arguments, et réciproquement. L'action est renommée
+  `..._registration_block_applied`, et la correction est consignée au §8.2.
+
+### Documentation
+
+- JE-023 : la dépendance interpole les messages d'erreur du formulaire
+  d'inscription **sans les échapper**
+  (`core/includes/error-tracking.php:47`). Notre échappement n'est donc pas une
+  précaution redondante, c'est la seule barrière — et c'est pourquoi il est fait
+  après le filtre, un filtre étant du code tiers.
+- JE-024 : `rcp_errors()` est un `WP_Error` statique, partagé par tout le
+  processus. Sept tests échouaient en lisant le message laissé par leurs
+  prédécesseurs, tous avec le même symptôme trompeur — le message par défaut là
+  où on attendait autre chose. Le §6 de `docs/tests.md` disait de ne pas
+  dépendre de l'état laissé par un test précédent ; il faut lire aussi « ni de
+  celui que la dépendance a gardé ».
+
+---
+
 Lot 5 : autorisation globale. **Le plugin accorde ses premiers accès** : une
 adresse inscrite dans la liste d'autorisation globale accède à tout contenu
 restreint du site, qu'elle soit connectée ou non.

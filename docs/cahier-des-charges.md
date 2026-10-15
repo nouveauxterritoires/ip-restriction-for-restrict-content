@@ -900,8 +900,21 @@ par un test.
 
 | Action | Paramètres | Usage |
 |---|---|---|
-| `ip_restriction_for_restrict_content_access_granted` | `Access_Decision $decision`, `int $post_id` | Journalisation par l'exploitant |
-| `ip_restriction_for_restrict_content_registration_blocked` | `Client_Address $address` | Idem |
+| `ip_restriction_for_restrict_content_access_granted` | `string $address` expurgée, `string $scope`, `int $post_id` | Journalisation par l'exploitant |
+| `ip_restriction_for_restrict_content_registration_block_applied` | `string $address` expurgée | Idem |
+
+**Correction apportée au lot 6.** Ce tableau donnait à l'action du blocage le
+même nom qu'au filtre du §8.1, et c'était un défaut : WordPress partage un seul
+registre entre actions et filtres, de sorte qu'un même nom ferait appeler les
+greffons du filtre par l'action — avec le mauvais nombre d'arguments — et
+réciproquement. L'action est donc renommée
+`..._registration_block_applied`, et les deux restent distinctes : le filtre
+décide, l'action constate.
+
+Les adresses transportées par ces actions sont **expurgées** (SEC-06) : l'action
+remet une forme réseau, jamais l'adresse complète. Ce que l'exploitant
+journalise ensuite relève de sa responsabilité ; ce que le plugin lui remet
+relève de la nôtre.
 | `ip_restriction_for_restrict_content_rule_rejected` | `string $line`, `int $number`, `string $reason` | Alimenter une supervision sur les réglages fautifs |
 
 Ces actions ne transportent que ce qui est nécessaire, et l'objet
@@ -1208,7 +1221,7 @@ si son attestation a tourné.
 | **3 — livré** | `Client_Address_Resolver`, proxys de confiance, lecture de droite à gauche, source de l'adresse | Suite `matching` : 120 tests, dont les six scénarios du §11.3 qui portent sur la résolution — les deux suivants ont été établis au lot 2, les trois derniers portent sur le comportement observable et attendent le lot 5. SEC-06 à SEC-10 couvertes, SEC-12 couverte à la lecture. `Support\Redactor` expurge avant toute écriture, et un seul fichier du plugin lit `$_SERVER` |
 | **4 — livré** | Écran de réglages, les deux listes, message d'erreur, proxys, validation à l'écriture, signalement des entrées rejetées, écran de diagnostic FNC-29 | Suites `integration` (26 tests) et `access` (20 tests) : aller-retour d'enregistrement, nonce et capacité exigés dans cet ordre, entrée rejetée conservée et signalée par un avis persistant, diagnostic affichant l'adresse retenue et sa source. SEC-01, SEC-03, SEC-04 et SEC-11 couvertes. O-08 tranchée (ADR-0009) et désinstallation conditionnelle en place. **Reste** : les portées par niveau et par contenu, qui sont les lots 7 et 8 |
 | **5 — livré** | Branchement sur `rcp_member_can_access`, chemins connecté et déconnecté, contenus | Suite `access` : 45 tests. FNC-01, FNC-05, FNC-30 et FNC-31 établis par l'exécution, sur les deux chemins de la dépendance ; SEC-13 et SEC-14 couvertes ; V-01 levé (JE-022). Les points d'extension du §8 qui portent sur ce chemin sont livrés, dont la contrainte « ne peut que retirer un octroi », vérifiée par deux tests. **FNC-06 n'est établi qu'en partie** : une seule portée existe, et la disjonction ne se vérifie qu'à partir de deux — ce sera le lot 7 |
-| **6 — blocage d'inscription** | Branchement sur `rcp_form_errors`, message personnalisé, échappement | Suite `access` : FNC-07 à FNC-12, A-01 à A-03. SEC-17 couverte |
+| **6 — livré** | Branchement sur `rcp_form_errors`, message personnalisé, échappement | Suite `access` : 59 tests. FNC-07 à FNC-12 établis par l'exécution du traitement réel d'inscription ; A-01 vérifiée dans les deux sens — une adresse bloquée n'obtient aucun accès au contenu, une adresse autorisée n'est pas bloquée à l'inscription ; A-02 et A-03 livrées au lot 4 ; SEC-03 et SEC-17 couvertes. L'échappement est la seule barrière : la dépendance interpole les messages sans les échapper (JE-023) |
 | **7 — portée par niveau d'adhésion** | Champ sur les écrans de niveau, stockage en métadonnée de niveau, décision limitée aux contenus du niveau | Suite `access` : FNC-02 et surtout FNC-04, le test de portée croisée |
 | **8 — portée par contenu** | Boîte de métadonnées, stockage en métadonnée de publication, nonce et capacité | Suite `access` : FNC-03, SEC-02 avec son test de contournement par identifiant |
 | **9 — taxonomies** | Couverture des restrictions de terme par `rcp_get_term_restrictions`, avec les garde-fous du §5.1.1 | Suite `access` : un contenu restreint par catégorie est accessible à une adresse autorisée ; aucun effet indirect constaté sur la même requête. V-06 tranché |

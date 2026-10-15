@@ -1,10 +1,10 @@
 # Architecture
 
 Ce document décrit la forme prévue du code. Au moment où il est écrit, les
-lots 0 à 5 sont livrés : l'amorçage conditionnel, la sonde de capacités,
+lots 0 à 6 sont livrés : l'amorçage conditionnel, la sonde de capacités,
 l'écran d'état, le moteur de correspondance, la résolution de l'adresse du
-visiteur, les réglages globaux avec leur écran, et l'autorisation globale
-branchée sur la dépendance. Tout le reste est une cible, pas un état. Les cases non livrées
+visiteur, les réglages globaux avec leur écran, l'autorisation globale et le
+blocage d'inscription, tous deux branchés sur la dépendance. Tout le reste est une cible, pas un état. Les cases non livrées
 sont signalées comme telles dans l'arborescence du §3.
 
 Référence : cahier des charges §4 (règles de décision), §5 (intégration),
@@ -111,8 +111,8 @@ src/
 │   ├── Scope.php                       livré — énumération : globale | niveau | contenu
 │   ├── Access_Policy.php               livré — FNC-01, FNC-05 ; non-transitivité au lot 7
 │   ├── Access_Decision.php             livré — accordé | non traité + portée et règle responsables
-│   ├── Registration_Policy.php         FNC-07 à FNC-09
-│   └── Registration_Decision.php       objet de valeur
+│   ├── Registration_Policy.php         livré — FNC-07 à FNC-09, FNC-12
+│   └── Registration_Decision.php       livré — bloqué + règle responsable
 │
 ├── Settings/                           transport — lecture et écriture des réglages
 │   ├── Settings.php                    livré — objet de valeur : l'ensemble des réglages
@@ -127,8 +127,8 @@ src/
 │   ├── Capability_Probe.php            livré — sonde du §5.2, jamais mémorisée (P-01…P-04)
 │   ├── Content_Access.php              livré — filtre rcp_member_can_access, FNC-31
 │   ├── Cache_Guard.php                 livré — SEC-14, non-cachabilité d'une réponse élargie
-│   ├── Term_Access.php                 rcp_get_term_restrictions, garde-fous du §5.1.1
-│   └── Registration_Guard.php          rcp_form_errors
+│   ├── Registration_Guard.php          livré — action rcp_form_errors, SEC-03, SEC-17
+│   └── Term_Access.php                 rcp_get_term_restrictions, garde-fous du §5.1.1
 │
 ├── Admin/                              application — écrans
 │   ├── Requirements_Notice.php         livré — avis de prérequis, cause et action de retour
@@ -143,6 +143,7 @@ src/
 │
 └── Support/
     ├── Redactor.php                    livré — SEC-06, expurgation avant journalisation
+    ├── Blocked_Message.php             livré — FNC-10, FNC-11, I18N-04
     └── Extension_Points.php            livré — noms des hooks du §8, en un seul endroit
 ```
 
@@ -155,6 +156,14 @@ fonction qui n'est pas interne à PHP y apparaît. Le critère est plus strict q
 « aucune fonction de WordPress », délibérément : une fonction globale que le
 plugin déclarerait ailleurs serait un couplage tout aussi contraire à
 l'architecture.
+
+**Les deux listes n'ont aucun chemin commun, et c'est vérifié jusque dans les
+politiques.** `Access_Policy` et `Registration_Policy` sont deux classes, deux
+objets de décision, deux branchements et deux instances. Aucune ne reçoit la
+liste de l'autre, et aucune ne sait décider à la place de l'autre — un test
+l'établit sur les signatures. C'est le prix de A-01, et il est modeste comparé
+à ce qu'une confusion de champ coûterait : une erreur par excès sur la liste
+d'autorisation est une fuite d'accès silencieuse et durable.
 
 **Les deux listes n'ont aucun chemin commun, et c'est vérifié.** A-01 n'est pas
 une consigne de style : les deux listes se ressemblent — deux champs de texte,

@@ -3,8 +3,8 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 5** : les cinq suites sont peuplées — `unit` (79 tests),
-`integration` (26), `contract` (36), `matching` (127) et `access` (45). Chacune
+**État au lot 6** : les cinq suites sont peuplées — `unit` (79 tests),
+`integration` (26), `contract` (36), `matching` (134) et `access` (59). Chacune
 a son job d'intégration continue, et la suite `contract` est exécutée par les
 jobs `contract-free` et `contract-pro` : **les deux ont tourné et sont verts**
 depuis le 15 octobre 2026, ce qui a levé le point ouvert V-10.
@@ -215,8 +215,9 @@ qu'ici serait mentir sur ce qu'ils établissent.
 
 ### 2.5 `access` — le comportement observable
 
-**Peuplée aux lots 4 et 5** : `SettingsScreenTest`, `RejectionNoticeTest`,
-`ContentAccessTest` et `ExtensionPointsTest` — 45 tests. Les tests du lot 5
+**Peuplée aux lots 4 à 6** : `SettingsScreenTest`, `RejectionNoticeTest`,
+`ContentAccessTest`, `ExtensionPointsTest` et `RegistrationBlockTest` —
+59 tests. Les tests du lot 5
 passent par `rcp_user_can_access()`, la fonction de la dépendance, et non par la
 politique interne : ce qui compte est le comportement observable, moteur et
 branchement compris. C'est aussi la suite qui a levé V-01. Ils portent ce qui garde l'écriture des réglages, parce qu'un écran
@@ -328,6 +329,15 @@ par le système (JE-018).
 ---
 
 ## 6. Ce qu'un test ne doit jamais faire
+
+Un dernier interdit s'ajoute au lot 6, et il n'était pas prévu : **ne jamais
+supposer que l'état d'un test est celui d'une requête neuve**. Le collecteur
+d'erreurs de la dépendance est un `WP_Error` statique, partagé par tout le
+processus : les erreurs s'y accumulent d'un test à l'autre, et le premier
+message enregistré pour un code masque les suivants. Sept tests échouaient
+ainsi, tous avec le même symptôme — le message par défaut là où on attendait
+autre chose (JE-024). Le §6 disait « ne jamais dépendre de l'état laissé par un
+test précédent » ; il faut lire aussi « ni de celui que la dépendance a gardé ».
 
 | Interdit | Motif |
 |---|---|

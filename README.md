@@ -9,11 +9,11 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Le plugin accorde ses premiers accès.** Les lots 0 à 5 sont livrés : une
-adresse inscrite dans la liste d'autorisation globale accède à tout contenu
-restreint du site, qu'elle soit connectée ou non. Il manque les deux autres
-portées — par niveau d'adhésion et par contenu — et le blocage d'inscription.
-Ce qui est livré et vérifié :
+**Les deux fonctions du plugin existent à la portée globale.** Les lots 0 à 6
+sont livrés : une adresse de la liste d'autorisation accède à tout contenu
+restreint du site, connectée ou non, et une adresse de la liste de blocage ne
+peut pas s'inscrire. Il manque les portées par niveau d'adhésion et par contenu,
+et la couverture des taxonomies. Ce qui est livré et vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -36,13 +36,28 @@ Ce qui est livré et vérifié :
 | Autorisation globale : une adresse de la liste accède à tout contenu restreint, connectée ou non, sans obtenir aucune capacité | `src/Integration/Content_Access.php`, `src/Policy/`, suite `access` |
 | Une réponse élargie par une autorisation n'entre pas dans un cache partagé | `src/Integration/Cache_Guard.php` |
 | Points d'extension du §8 sur le chemin d'accès, dont un filtre qui ne peut que **retirer** un octroi | `src/Support/Extension_Points.php`, suite `access` |
-| Les cinq suites de tests sont peuplées — 313 tests | `phpunit.xml.dist`, `tests/` |
+| Blocage d'inscription : une adresse de la liste ne peut pas soumettre le formulaire, avec un message avare et échappé | `src/Integration/Registration_Guard.php`, suite `access` |
+| Les deux listes ne partagent ni stockage, ni chemin de décision, ni instance (A-01) | `src/Policy/`, tests sur les signatures |
+| Les cinq suites de tests sont peuplées — 334 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
-**Rien d'autre.** La liste de blocage d'inscription est saisissable mais n'est
-pas encore consultée : c'est le lot 6. Les portées par niveau d'adhésion et par
-contenu sont les lots 7 et 8, et la couverture des taxonomies le lot 9. Ce que le plugin
+**Rien d'autre.** Les portées par niveau d'adhésion et par contenu sont les
+lots 7 et 8, et la couverture des taxonomies le lot 9. Les deux listes ne valent
+donc, pour l'instant, qu'à la portée globale.
+
+### Les deux listes ne se ressemblent que de loin
+
+| | Liste d'autorisation | Liste de blocage |
+|---|---|---|
+| Effet | Accorde la lecture d'un contenu restreint | Refuse une inscription |
+| Effet sur l'autre fonction | **Aucun** : une adresse autorisée n'est pas bloquée à l'inscription | **Aucun** : une adresse bloquée n'obtient ni plus ni moins d'accès au contenu |
+| Portées | Globale, par niveau d'adhésion, par contenu | Globale uniquement |
+| Erreur par excès | Fuite d'accès **silencieuse** | Inscriptions légitimes refusées, donc signalées |
+
+Les deux n'ont aucun stockage, aucun cache ni aucun chemin de décision en
+commun : une confusion de champ ne peut pas transformer un blocage en
+autorisation. Ce que le plugin
 fera est spécifié dans le cahier des charges ; le découpage en lots est au §13.
 
 La suite `contract` est exécutée contre les **deux** variantes en intégration
