@@ -124,6 +124,41 @@
         <exclude-pattern>src/Rule/Rule_Family.php</exclude-pattern>
     </rule>
 
+    <!-- `DONOTCACHEPAGE` n'est pas une constante de ce plugin : c'est la
+         convention que respectent les caches de pages répandus, et la nommer
+         autrement reviendrait à ne pas la définir (SEC-14). -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound">
+        <exclude-pattern>src/Integration/Cache_Guard.php</exclude-pattern>
+    </rule>
+    <!-- Les noms de hooks sont déclarés en constantes dans
+         `Support\Extension_Points`, et nulle part ailleurs : c'est ce qui rend
+         impossible qu'un nom diverge d'un caractère entre deux appels et que le
+         filtre cesse silencieusement d'être appelé (architecture §5). Le sniff
+         ne sait pas résoudre une constante de classe et signale donc des noms
+         qui sont bien préfixés — la valeur des constantes commence par la forme
+         longue du préfixe, et un test l'établirait si elle changeait. -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound">
+        <exclude-pattern>src/Integration/*</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound">
+        <exclude-pattern>src/Integration/*</exclude-pattern>
+    </rule>
+
+    <!-- `rcp_manage_settings` est la capacité de la dépendance, réutilisée par
+         FNC-24 plutôt que d'en inventer une : un site n'a pas à avoir deux
+         notions distinctes de « qui administre les adhésions ». Elle est
+         déclarée ici pour que le sniff ne la prenne pas pour une faute de
+         frappe, et la suite `contract` établit qu'elle existe bien en amont. -->
+    <rule ref="WordPress.WP.Capabilities">
+        <properties>
+            <property name="custom_capabilities" type="array">
+                <element value="rcp_manage_settings"/>
+                <element value="rcp_manage_levels"/>
+                <element value="rcp_view_members"/>
+            </property>
+        </properties>
+    </rule>
+
     <!-- PSR-4 : les noms de fichiers ne suivent pas la convention WordPress. -->
     <rule ref="WordPress.Files.FileName">
         <exclude-pattern>src/*</exclude-pattern>

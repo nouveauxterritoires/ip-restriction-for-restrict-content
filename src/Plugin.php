@@ -24,7 +24,9 @@ use Ip_Restriction_For_Restrict_Content\Admin\Settings_Page;
 use Ip_Restriction_For_Restrict_Content\Domain\Capability_Report;
 use Ip_Restriction_For_Restrict_Content\Domain\Dependency_Diagnosis;
 use Ip_Restriction_For_Restrict_Content\Domain\Requirements;
+use Ip_Restriction_For_Restrict_Content\Integration\Cache_Guard;
 use Ip_Restriction_For_Restrict_Content\Integration\Capability_Probe;
+use Ip_Restriction_For_Restrict_Content\Integration\Content_Access;
 use Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository;
 
 /**
@@ -170,6 +172,15 @@ final class Plugin {
 
 		( new Settings_Page( $repository ) )->register();
 		( new Rejection_Notice( $repository ) )->register();
+
+		/*
+		 * La décision d'accès est branchée en dernier, et sur la seule
+		 * accroche que la dépendance applique sur les trois chemins de sa
+		 * décision (§5.1). Le marquage de non-cachabilité partage l'instance
+		 * du branchement : une requête ne doit être marquée qu'une fois, quel
+		 * que soit le nombre de contenus élargis (SEC-14).
+		 */
+		( new Content_Access( $repository, new Cache_Guard() ) )->register();
 	}
 
 	/**
