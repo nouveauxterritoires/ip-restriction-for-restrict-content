@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-15T18:25:09+00:00\n"
+"POT-Creation-Date: 2026-10-16T08:24:30+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ip-restriction-for-restrict-content\n"
@@ -82,7 +82,7 @@ msgstr ""
 #: src/Admin/Capability_Status_Page.php:97
 #: src/Admin/Settings_Page.php:137
 #: src/Admin/Settings_Page.php:138
-#: src/Admin/Settings_Page.php:240
+#: src/Admin/Settings_Page.php:241
 msgid "Restriction par adresse IP"
 msgstr ""
 
@@ -217,17 +217,17 @@ msgid "cette entrée ne correspond à aucune forme acceptée"
 msgstr ""
 
 #: src/Admin/Rejection_Notice.php:78
-#: src/Admin/Settings_Page.php:280
+#: src/Admin/Settings_Page.php:281
 msgid "Liste d'autorisation globale"
 msgstr ""
 
 #: src/Admin/Rejection_Notice.php:79
-#: src/Admin/Settings_Page.php:289
+#: src/Admin/Settings_Page.php:290
 msgid "Liste de blocage d'inscription"
 msgstr ""
 
 #: src/Admin/Rejection_Notice.php:80
-#: src/Admin/Settings_Page.php:318
+#: src/Admin/Settings_Page.php:319
 msgid "Proxys de confiance"
 msgstr ""
 
@@ -255,100 +255,112 @@ msgstr ""
 msgid "IP Restriction for Restrict Content ne peut pas démarrer : prérequis absents."
 msgstr ""
 
-#: src/Admin/Settings_Page.php:243
+#: src/Admin/Settings_Page.php:244
 msgid "Votre page avait expiré : rien n'a été enregistré. Rechargez l'écran et recommencez."
 msgstr ""
 
-#: src/Admin/Settings_Page.php:247
+#: src/Admin/Settings_Page.php:248
 msgid "Réglages enregistrés."
 msgstr ""
 
-#: src/Admin/Settings_Page.php:285
+#: src/Admin/Settings_Page.php:286
 msgid "Une entrée par ligne. Ces adresses accèdent à tout contenu restreint du site."
 msgstr ""
 
-#: src/Admin/Settings_Page.php:294
+#: src/Admin/Settings_Page.php:295
 msgid "Une entrée par ligne. Ces adresses ne peuvent pas s'inscrire ; leur accès au contenu n'est pas modifié."
 msgstr ""
 
-#: src/Admin/Settings_Page.php:298
+#: src/Admin/Settings_Page.php:299
 msgid "Message d'erreur de blocage"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:314
+#: src/Admin/Settings_Page.php:315
 msgid "Derrière un proxy ou un CDN"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:323
+#: src/Admin/Settings_Page.php:324
 msgid "Tant que ce champ est vide, aucun en-tête HTTP n'est lu : seule l'adresse de la connexion est évaluée."
 msgstr ""
 
-#: src/Admin/Settings_Page.php:327
+#: src/Admin/Settings_Page.php:328
 msgid "En-tête de transfert à lire"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:332
+#: src/Admin/Settings_Page.php:333
 msgid "aucun"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:352
+#: src/Admin/Settings_Page.php:353
+msgid "Archives de catégorie"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:356
+msgid "Couvrir aussi les archives de catégorie et d'étiquette restreintes"
+msgstr ""
+
+#: src/Admin/Settings_Page.php:358
+msgid "Les contenus d'une catégorie restreinte sont couverts sans cette option. Elle ne concerne que la page d'archive de la catégorie elle-même, et la dépendance n'offre pour celle-ci aucun point de décision : la seule voie est de neutraliser la restriction du terme demandé pendant la requête. Tout autre code qui relit les restrictions de ce terme pendant cette même requête verra donc un terme non restreint."
+msgstr ""
+
+#: src/Admin/Settings_Page.php:362
 msgid "Désinstallation"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:355
+#: src/Admin/Settings_Page.php:365
 msgid "Supprimer ces réglages si le plugin est désinstallé"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:386
+#: src/Admin/Settings_Page.php:396
 msgid "Diagnostic de la requête en cours"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:388
+#: src/Admin/Settings_Page.php:398
 msgid "Adresse retenue"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:389
+#: src/Admin/Settings_Page.php:399
 msgid "indéterminable"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:391
+#: src/Admin/Settings_Page.php:401
 msgid "Source"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:404
+#: src/Admin/Settings_Page.php:414
 msgid "adresse de la connexion ; aucun en-tête n'est lu"
 msgstr ""
 
 #. translators: 1: nom de l'en-tête lu, 2: rang de la valeur retenue dans la chaîne.
-#: src/Admin/Settings_Page.php:410
+#: src/Admin/Settings_Page.php:420
 #, php-format
 msgid "en-tête %1$s, valeur de rang %2$d"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:428
+#: src/Admin/Settings_Page.php:438
 msgid "le serveur web n'a transmis aucune adresse de connexion"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:430
+#: src/Admin/Settings_Page.php:440
 msgid "la connexion vient d'un proxy déclaré, mais l'en-tête choisi est absent de la requête"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:432
+#: src/Admin/Settings_Page.php:442
 msgid "la valeur de l'en-tête n'est pas analysable"
 msgstr ""
 
-#: src/Admin/Settings_Page.php:434
+#: src/Admin/Settings_Page.php:444
 msgid "la chaîne de transfert ne contient que des proxys déclarés"
 msgstr ""
 
 #. translators: 1: version de PHP requise, 2: version installée.
-#: src/Plugin.php:89
+#: src/Plugin.php:91
 #, php-format
 msgid "PHP %1$s ou plus récent (version installée : %2$s)"
 msgstr ""
 
 #. translators: 1: version de WordPress requise, 2: version installée.
-#: src/Plugin.php:95
+#: src/Plugin.php:97
 #, php-format
 msgid "WordPress %1$s ou plus récent (version installée : %2$s)"
 msgstr ""

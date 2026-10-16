@@ -30,6 +30,8 @@ use Ip_Restriction_For_Restrict_Content\Integration\Cache_Guard;
 use Ip_Restriction_For_Restrict_Content\Integration\Capability_Probe;
 use Ip_Restriction_For_Restrict_Content\Integration\Content_Access;
 use Ip_Restriction_For_Restrict_Content\Integration\Registration_Guard;
+use Ip_Restriction_For_Restrict_Content\Integration\Term_Access;
+use Ip_Restriction_For_Restrict_Content\Integration\Visitor_Address;
 use Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository;
 
 /**
@@ -183,7 +185,19 @@ final class Plugin {
 		 * du branchement : une requête ne doit être marquée qu'une fois, quel
 		 * que soit le nombre de contenus élargis (SEC-14).
 		 */
-		( new Content_Access( $repository, new Cache_Guard() ) )->register();
+		$cache   = new Cache_Guard();
+		$visitor = new Visitor_Address( $repository );
+
+		( new Content_Access( $repository, $cache, $visitor ) )->register();
+
+		/*
+		 * La couverture des archives de terme partage le marquage et la
+		 * résolution d'adresse, pour la même raison : une requête ne doit être
+		 * marquée qu'une fois, et l'adresse résolue qu'une fois. Le
+		 * branchement décide lui-même de ne pas s'accrocher — il est
+		 * optionnel, et désactivé par défaut (§5.1.1, V-06).
+		 */
+		( new Term_Access( $repository, $cache, $visitor ) )->register();
 
 		/*
 		 * Le blocage d'inscription est branché séparément, sur sa propre

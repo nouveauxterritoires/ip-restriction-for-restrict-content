@@ -183,22 +183,23 @@ final class Settings_Page {
 		 * couche de décision, qui ne dépend pas de WordPress.
 		 */
 		$submitted = array(
-			'allow_list'           => isset( $_POST['rcipr_allow_list'] )
+			'allow_list'            => isset( $_POST['rcipr_allow_list'] )
 				? sanitize_textarea_field( wp_unslash( $_POST['rcipr_allow_list'] ) )
 				: '',
-			'block_list'           => isset( $_POST['rcipr_block_list'] )
+			'block_list'            => isset( $_POST['rcipr_block_list'] )
 				? sanitize_textarea_field( wp_unslash( $_POST['rcipr_block_list'] ) )
 				: '',
-			'trusted_proxies'      => isset( $_POST['rcipr_trusted_proxies'] )
+			'trusted_proxies'       => isset( $_POST['rcipr_trusted_proxies'] )
 				? sanitize_textarea_field( wp_unslash( $_POST['rcipr_trusted_proxies'] ) )
 				: '',
-			'blocked_message'      => isset( $_POST['rcipr_blocked_message'] )
+			'blocked_message'       => isset( $_POST['rcipr_blocked_message'] )
 				? sanitize_text_field( wp_unslash( $_POST['rcipr_blocked_message'] ) )
 				: '',
-			'forwarded_header'     => isset( $_POST['rcipr_forwarded_header'] )
+			'forwarded_header'      => isset( $_POST['rcipr_forwarded_header'] )
 				? sanitize_text_field( wp_unslash( $_POST['rcipr_forwarded_header'] ) )
 				: '',
-			'deletes_on_uninstall' => isset( $_POST['rcipr_deletes_on_uninstall'] ),
+			'deletes_on_uninstall'  => isset( $_POST['rcipr_deletes_on_uninstall'] ),
+			'covers_taxonomy_terms' => isset( $_POST['rcipr_covers_taxonomy_terms'] ),
 		);
 
 		$this->repository->save( Settings_Validator::validate( $submitted )->settings() );
@@ -348,6 +349,15 @@ final class Settings_Page {
 	 * @return void
 	 */
 	private function render_uninstall_field( Settings $settings ): void {
+		echo '<table class="form-table"><tbody><tr><th scope="row">'
+			. esc_html__( 'Archives de catégorie', 'ip-restriction-for-restrict-content' )
+			. '</th><td><label><input type="checkbox" name="rcipr_covers_taxonomy_terms" value="1"'
+			. checked( true, $settings->covers_taxonomy_terms(), false ) . ' /> '
+			. esc_html__( 'Couvrir aussi les archives de catégorie et d\'étiquette restreintes', 'ip-restriction-for-restrict-content' )
+			. '</label><p class="description">'
+			. esc_html__( 'Les contenus d\'une catégorie restreinte sont couverts sans cette option. Elle ne concerne que la page d\'archive de la catégorie elle-même, et la dépendance n\'offre pour celle-ci aucun point de décision : la seule voie est de neutraliser la restriction du terme demandé pendant la requête. Tout autre code qui relit les restrictions de ce terme pendant cette même requête verra donc un terme non restreint.', 'ip-restriction-for-restrict-content' )
+			. '</p></td></tr></tbody></table>';
+
 		echo '<table class="form-table"><tbody><tr><th scope="row">'
 			. esc_html__( 'Désinstallation', 'ip-restriction-for-restrict-content' )
 			. '</th><td><label><input type="checkbox" name="rcipr_deletes_on_uninstall" value="1"'

@@ -123,4 +123,17 @@ final class Extension_Points {
 	 * @var string
 	 */
 	public const ACCESS_GRANTED = 'ip_restriction_for_restrict_content_access_granted';
+
+	/**
+	 * Action : la restriction d'un terme vient d'être neutralisée.
+	 *
+	 * Distincte de l'octroi d'accès à un contenu, parce que la chose faite est
+	 * distincte : ici le plugin ne répond pas à une question, il modifie une
+	 * donnée pour la durée de la requête (§5.1.1). Un exploitant qui
+	 * journalise a le droit de savoir lequel des deux s'est produit, et un
+	 * `post_id` à zéro ne le lui dirait pas.
+	 *
+	 * @var string
+	 */
+	public const TERM_RESTRICTION_LIFTED = 'ip_restriction_for_restrict_content_term_restriction_lifted';
 }

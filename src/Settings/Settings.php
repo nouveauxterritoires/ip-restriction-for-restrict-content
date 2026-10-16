@@ -109,14 +109,30 @@ final class Settings {
 	private bool $deletes_on_uninstall;
 
 	/**
+	 * L'administrateur a demandé la couverture des archives de terme.
+	 *
+	 * Désactivée par défaut, et c'est le constat du lot 9 qui l'impose : la
+	 * seule accroche disponible sur la décision d'accès à un terme modifie une
+	 * **donnée** et non une décision (§5.1.1), et V-06 a établi par l'exécution
+	 * que l'altération est visible par tout code qui relit les restrictions du
+	 * même terme pendant la même requête. Le cahier des charges avait prévu
+	 * cette issue : « si elle l'est, la couverture des taxonomies passe en
+	 * fonctionnalité optionnelle, désactivée par défaut ».
+	 *
+	 * @var bool
+	 */
+	private bool $covers_taxonomy_terms;
+
+	/**
 	 * Construit des réglages déjà normalisés.
 	 *
-	 * @param string $allow_list           Liste d'autorisation globale.
-	 * @param string $block_list           Liste de blocage d'inscription.
-	 * @param string $blocked_message      Message de blocage.
-	 * @param string $trusted_proxies      Proxys de confiance.
-	 * @param string $forwarded_header     En-tête de transfert à lire.
-	 * @param bool   $deletes_on_uninstall Suppression à la désinstallation.
+	 * @param string $allow_list            Liste d'autorisation globale.
+	 * @param string $block_list            Liste de blocage d'inscription.
+	 * @param string $blocked_message       Message de blocage.
+	 * @param string $trusted_proxies       Proxys de confiance.
+	 * @param string $forwarded_header      En-tête de transfert à lire.
+	 * @param bool   $deletes_on_uninstall  Suppression à la désinstallation.
+	 * @param bool   $covers_taxonomy_terms Couverture des archives de terme.
 	 */
 	private function __construct(
 		string $allow_list,
@@ -124,14 +140,16 @@ final class Settings {
 		string $blocked_message,
 		string $trusted_proxies,
 		string $forwarded_header,
-		bool $deletes_on_uninstall
+		bool $deletes_on_uninstall,
+		bool $covers_taxonomy_terms
 	) {
-		$this->allow_list           = $allow_list;
-		$this->block_list           = $block_list;
-		$this->blocked_message      = $blocked_message;
-		$this->trusted_proxies      = $trusted_proxies;
-		$this->forwarded_header     = $forwarded_header;
-		$this->deletes_on_uninstall = $deletes_on_uninstall;
+		$this->allow_list            = $allow_list;
+		$this->block_list            = $block_list;
+		$this->blocked_message       = $blocked_message;
+		$this->trusted_proxies       = $trusted_proxies;
+		$this->forwarded_header      = $forwarded_header;
+		$this->deletes_on_uninstall  = $deletes_on_uninstall;
+		$this->covers_taxonomy_terms = $covers_taxonomy_terms;
 	}
 
 	/**
@@ -140,7 +158,7 @@ final class Settings {
 	 * @return self
 	 */
 	public static function defaults(): self {
-		return new self( '', '', self::DEFAULT_BLOCKED_MESSAGE, '', self::NO_HEADER, false );
+		return new self( '', '', self::DEFAULT_BLOCKED_MESSAGE, '', self::NO_HEADER, false, false );
 	}
 
 	/**
@@ -163,7 +181,8 @@ final class Settings {
 			self::text( $stored, 'blocked_message', self::DEFAULT_BLOCKED_MESSAGE ),
 			self::text( $stored, 'trusted_proxies', '' ),
 			in_array( $header, self::READABLE_HEADERS, true ) ? $header : self::NO_HEADER,
-			! empty( $stored['deletes_on_uninstall'] )
+			! empty( $stored['deletes_on_uninstall'] ),
+			! empty( $stored['covers_taxonomy_terms'] )
 		);
 	}
 
@@ -236,18 +255,28 @@ final class Settings {
 	}
 
 	/**
+	 * L'administrateur a demandé la couverture des archives de terme.
+	 *
+	 * @return bool
+	 */
+	public function covers_taxonomy_terms(): bool {
+		return $this->covers_taxonomy_terms;
+	}
+
+	/**
 	 * Forme stockée des réglages.
 	 *
 	 * @return array<string, bool|string>
 	 */
 	public function to_array(): array {
 		return array(
-			'allow_list'           => $this->allow_list,
-			'block_list'           => $this->block_list,
-			'blocked_message'      => $this->blocked_message,
-			'trusted_proxies'      => $this->trusted_proxies,
-			'forwarded_header'     => $this->forwarded_header,
-			'deletes_on_uninstall' => $this->deletes_on_uninstall,
+			'allow_list'            => $this->allow_list,
+			'block_list'            => $this->block_list,
+			'blocked_message'       => $this->blocked_message,
+			'trusted_proxies'       => $this->trusted_proxies,
+			'forwarded_header'      => $this->forwarded_header,
+			'deletes_on_uninstall'  => $this->deletes_on_uninstall,
+			'covers_taxonomy_terms' => $this->covers_taxonomy_terms,
 		);
 	}
 }

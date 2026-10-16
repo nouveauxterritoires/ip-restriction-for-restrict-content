@@ -47,12 +47,13 @@ final class Settings_Validator {
 
 		$settings = Settings::from_array(
 			array(
-				'allow_list'           => $allow_list,
-				'block_list'           => $block_list,
-				'trusted_proxies'      => $trusted_proxies,
-				'blocked_message'      => $submitted['blocked_message'] ?? null,
-				'forwarded_header'     => $submitted['forwarded_header'] ?? null,
-				'deletes_on_uninstall' => ! empty( $submitted['deletes_on_uninstall'] ),
+				'allow_list'            => $allow_list,
+				'block_list'            => $block_list,
+				'trusted_proxies'       => $trusted_proxies,
+				'blocked_message'       => $submitted['blocked_message'] ?? null,
+				'forwarded_header'      => $submitted['forwarded_header'] ?? null,
+				'deletes_on_uninstall'  => ! empty( $submitted['deletes_on_uninstall'] ),
+				'covers_taxonomy_terms' => ! empty( $submitted['covers_taxonomy_terms'] ),
 			)
 		);
 
