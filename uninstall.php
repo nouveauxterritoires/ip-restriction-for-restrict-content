@@ -15,6 +15,12 @@
  * déboguer, ou le temps d'une migration — et une liste d'adresses ne se
  * retrouve pas de mémoire.
  *
+ * « Les réglages » comprend les trois endroits où ils vivent (§6.6) : l'option
+ * du site, les métadonnées de niveau et celles de contenu. En oublier un
+ * laisserait un réglage orphelin — et les identifiants de niveau viennent d'une
+ * table auto-incrémentée, donc une liste oubliée finirait par s'appliquer à un
+ * autre niveau que celui pour lequel elle avait été écrite.
+ *
  * Les comptes utilisateurs ne sont jamais touchés, dans aucun scénario.
  *
  * Les réglages sont propres à chaque site d'un réseau (O-08, ADR-0009) : une
@@ -64,6 +70,64 @@ function ip_restriction_for_restrict_content_uninstall_site(): void {
 
 	delete_option( \Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository::OPTION );
 	delete_option( \Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository::VERSION_OPTION );
+
+	delete_post_meta_by_key( \Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository::POST_META_KEY );
+
+	ip_restriction_for_restrict_content_uninstall_level_lists();
+}
+
+/**
+ * Supprime les listes rangées en métadonnée de niveau d'adhésion.
+ *
+ * Les métadonnées de niveau vivent dans une table de la dépendance, et il n'y a
+ * pas d'équivalent de `delete_post_meta_by_key()` pour elles. Deux voies, dans
+ * cet ordre : son interface si elle est chargée — c'est le cas courant, on
+ * désinstalle ce plugin-ci alors que la dépendance reste active —, puis le nom
+ * de table qu'elle déclare. Si ni l'une ni l'autre n'est disponible, la
+ * fonction ne fait rien : deviner le nom d'une table pour y lancer une
+ * suppression serait pire que de laisser des métadonnées derrière soi.
+ *
+ * @return void
+ */
+function ip_restriction_for_restrict_content_uninstall_level_lists(): void {
+	$key = \Ip_Restriction_For_Restrict_Content\Settings\Settings_Repository::LEVEL_META_KEY;
+
+	if ( function_exists( 'rcp_get_membership_levels' ) && function_exists( 'rcp_delete_membership_level_meta' ) ) {
+		foreach ( (array) rcp_get_membership_levels( array( 'number' => 0 ) ) as $level ) {
+			$level_id = is_object( $level ) ? ( $level->get_id() ?? 0 ) : 0;
+
+			if ( 0 === (int) $level_id ) {
+				continue;
+			}
+
+			rcp_delete_membership_level_meta( (int) $level_id, $key );
+		}
+
+		return;
+	}
+
+	global $wpdb;
+
+	$table = '';
+
+	if ( function_exists( 'rcp_get_level_meta_db_name' ) ) {
+		$table = (string) rcp_get_level_meta_db_name();
+	} elseif ( isset( $wpdb->levelmeta ) ) {
+		$table = (string) $wpdb->levelmeta;
+	}
+
+	/*
+	 * Un nom de table ne se place pas en paramètre préparé. Il est donc
+	 * vérifié : seul un identifiant simple est accepté, et tout le reste fait
+	 * renoncer. La valeur vient de la dépendance et non d'une requête, mais
+	 * c'est la vérification qui le garantit, pas la confiance.
+	 */
+	if ( 1 !== preg_match( '/^[A-Za-z0-9_]+$/', $table ) ) {
+		return;
+	}
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Nom de table vérifié juste au-dessus ; la dépendance n'offre aucune API sur ce chemin, et il n'y a rien à mettre en cache dans une désinstallation.
+	$wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE meta_key = %s", $key ) );
 }
 
 if ( is_multisite() ) {

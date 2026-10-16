@@ -91,6 +91,111 @@ final class UninstallTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Sur demande, les listes de niveau et de contenu sont supprimées aussi.
+	 *
+	 * §6.6 range les trois dans la même ligne — réglages, métadonnées de
+	 * niveau et de contenu —, et il a raison : une liste de niveau oubliée est
+	 * un réglage orphelin, et un identifiant de niveau est réattribué par une
+	 * table auto-incrémentée.
+	 *
+	 * @return void
+	 */
+	public function test_level_and_post_lists_are_deleted_on_request(): void {
+		$repository = new Settings_Repository();
+
+		$level_id = (int) rcp_add_membership_level(
+			array(
+				'name'     => 'Or',
+				'price'    => 10,
+				'duration' => 1,
+				'status'   => 'active',
+			)
+		);
+		$post_id  = self::factory()->post->create();
+
+		$repository->save_level_list( $level_id, '192.0.2.1' );
+		$repository->save_post_list( $post_id, '192.0.2.2' );
+		$this->store_settings( true );
+
+		$this->run_uninstall();
+
+		$this->assertSame( '', $repository->load_level_list( $level_id ), 'La liste du niveau doit partir.' );
+		$this->assertSame( '', $repository->load_post_list( $post_id ), 'La liste du contenu doit partir.' );
+	}
+
+	/**
+	 * Sans demande, les listes de niveau et de contenu survivent.
+	 *
+	 * @return void
+	 */
+	public function test_level_and_post_lists_survive_by_default(): void {
+		$repository = new Settings_Repository();
+
+		$level_id = (int) rcp_add_membership_level(
+			array(
+				'name'     => 'Or',
+				'price'    => 10,
+				'duration' => 1,
+				'status'   => 'active',
+			)
+		);
+		$post_id  = self::factory()->post->create();
+
+		$repository->save_level_list( $level_id, '192.0.2.1' );
+		$repository->save_post_list( $post_id, '192.0.2.2' );
+		$this->store_settings( false );
+
+		$this->run_uninstall();
+
+		$this->assertSame( '192.0.2.1', $repository->load_level_list( $level_id ) );
+		$this->assertSame( '192.0.2.2', $repository->load_post_list( $post_id ) );
+	}
+
+	/**
+	 * La suppression ne touche pas les métadonnées des autres.
+	 *
+	 * Supprimer par clé est commode et dangereux : une boucle mal bornée
+	 * emporterait les métadonnées de la dépendance, dont les restrictions de
+	 * contenu. La désinstallation du plugin ne doit pas reconfigurer le site.
+	 *
+	 * @return void
+	 */
+	public function test_deleting_leaves_other_metadata_alone(): void {
+		$repository = new Settings_Repository();
+
+		$level_id = (int) rcp_add_membership_level(
+			array(
+				'name'     => 'Or',
+				'price'    => 10,
+				'duration' => 1,
+				'status'   => 'active',
+			)
+		);
+		$post_id  = self::factory()->post->create();
+
+		$repository->save_level_list( $level_id, '192.0.2.1' );
+		$repository->save_post_list( $post_id, '192.0.2.2' );
+
+		update_post_meta( $post_id, 'rcp_subscription_level', array( $level_id ) );
+		rcp_update_membership_level_meta( $level_id, 'autre_chose', 'à garder' );
+
+		$this->store_settings( true );
+
+		$this->run_uninstall();
+
+		$this->assertSame(
+			array( $level_id ),
+			get_post_meta( $post_id, 'rcp_subscription_level', true ),
+			'La restriction de contenu de la dépendance reste intacte.'
+		);
+		$this->assertSame(
+			'à garder',
+			rcp_get_membership_level_meta( $level_id, 'autre_chose', true ),
+			'Les autres métadonnées de niveau restent intactes.'
+		);
+	}
+
+	/**
 	 * La désinstallation ne touche aucun compte utilisateur.
 	 *
 	 * Le test est là parce que l'exigence est absolue : jamais, dans aucun
