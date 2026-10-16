@@ -935,6 +935,14 @@ l'autre que la dépendance seule laisse bien la métadonnée. Le jour où l'amon
 nettoiera, le second échouera — et ce sera une bonne nouvelle, qui permettra de
 retirer du code.
 
+**Nuance relevée au lot 10, pour le successeur qui lirait la dépendance avant ce
+journal.** Un `DELETE FROM {$wpdb->levelmeta} WHERE level_id = %d` existe bien
+dans la dépendance (`core/includes/class-rcp-levels.php:358`), dans sa classe
+historique de niveaux. Le trouver ne contredit pas ce constat : le chemin
+qu'emprunte `rcp_delete_membership_level()` ne passe pas par là, et c'est le
+test, non la lecture, qui le dit. Deux chemins de suppression coexistent, et un
+seul est celui que la dépendance emprunte aujourd'hui.
+
 ---
 
 ## JE-026 — La dépendance garde déjà sa boîte de métadonnées, et ce n'est pas une raison de ne pas la garder

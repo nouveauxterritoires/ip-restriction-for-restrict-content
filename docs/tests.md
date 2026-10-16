@@ -3,8 +3,8 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 9** : les cinq suites sont peuplées — `unit` (79 tests),
-`integration` (26), `contract` (36), `matching` (143) et `access` (121). Chacune
+**État au lot 10** : les cinq suites sont peuplées — `unit` (83 tests),
+`integration` (29), `contract` (36), `matching` (143) et `access` (121). Chacune
 a son job d'intégration continue, et la suite `contract` est exécutée par les
 jobs `contract-free` et `contract-pro` : **les deux ont tourné et sont verts**
 depuis le 15 octobre 2026, ce qui a levé le point ouvert V-10.

@@ -9,12 +9,11 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Toutes les fonctionnalités sont livrées.** Les lots 0 à 9 sont faits : une
-adresse peut être autorisée globalement, **par niveau d'adhésion** ou **par
-contenu**, les contenus restreints par catégorie sont couverts, et une adresse de
-la liste de blocage ne peut pas s'inscrire. Il reste le lot de livraison —
-`readme.txt`, archive, documentation utilisateur. Ce qui est livré et
-vérifié :
+**Les dix lots sont faits, et la version est 1.0.0.** Une adresse peut être
+autorisée globalement, **par niveau d'adhésion** ou **par contenu**, les
+contenus restreints par catégorie sont couverts, une adresse de la liste de
+blocage ne peut pas s'inscrire, et `make build` produit l'archive distribuable.
+Ce qui est livré et vérifié :
 
 | Livré | Ce qui l'atteste |
 |---|---|
@@ -43,12 +42,19 @@ vérifié :
 | Portée par contenu : champ dans la boîte de restriction de la dépendance, stockage en métadonnée protégée, nonce **et** capacité vérifiée sur le contenu enregistré — un identifiant substitué dans la requête ne pose aucune autorisation | `src/Admin/Post_Metabox.php`, `src/Policy/Access_Policy.php`, suite `access` |
 | Contenus restreints par catégorie : couverts par le même branchement que le reste, sans toucher aux données de la catégorie | `src/Integration/Content_Access.php`, suite `access` |
 | Archives de catégorie restreintes : couvertes en **option désactivée par défaut**, parce que la dépendance n'offre là aucun point de décision et que la seule voie altère une donnée partagée | `src/Integration/Term_Access.php`, suite `access`, §5.1.1 |
-| Les cinq suites de tests sont peuplées — 405 tests | `phpunit.xml.dist`, `tests/` |
+| Désinstallation complète sur demande — réglages, listes de niveau et listes de contenu —, et jamais rien d'autre | `uninstall.php`, suite `integration` |
+| Archive distribuable sans test, sans documentation ni outillage, et exigences de livraison tenues par des tests | `bin/build.sh`, `readme.txt`, suite `unit` |
+| Les cinq suites de tests sont peuplées — 412 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
-**Rien d'autre.** Le lot 10 — désinstallation vérifiée, `readme.txt`, archive de
-distribution, documentation utilisateur — reste à faire.
+**Rien d'autre.** Ce qui n'est délibérément pas dans ce plugin — import de
+listes, journal d'audit, détection de VPN — n'y entrera pas : chacun de ces
+sujets est un plugin, pas une fonctionnalité de celui-ci.
+
+L'utilisation du plugin est documentée pour l'administrateur dans
+[`docs/utilisation.md`](docs/utilisation.md), qui énonce aussi les comportements
+que la documentation amont laisse indéterminés.
 
 ### Les trois portées ne se cumulent pas comme on le croit
 
@@ -195,6 +201,7 @@ archive dans `vendor-plugins/`, ou désignez un répertoire décompressé par
 
 | Document | Contenu |
 |---|---|
+| [`docs/utilisation.md`](docs/utilisation.md) | **La documentation utilisateur** : les trois portées, la grammaire des entrées, les proxys, l'option des archives de catégorie, la désinstallation |
 | [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md) | Le document central : exigences, règles de décision, sécurité, tests, lots, points ouverts |
 | [`docs/architecture.md`](docs/architecture.md) | Les trois couches, l'arborescence `src/` prévue, les objets de valeur, les points d'extension |
 | [`docs/tests.md`](docs/tests.md) | Rôle de chaque suite, ce que chacune doit établir, fixtures, seuils |
