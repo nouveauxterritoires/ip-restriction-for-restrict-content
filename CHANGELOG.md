@@ -3,7 +3,41 @@
 Format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnage [sémantique](https://semver.org/lang/fr/).
 
-## [Non publié]
+## [1.0.0] - 2026-10-16
+
+Lot 10 : livraison. Les dix lots du cahier des charges §13 sont faits, et la
+version passe de `0.1.0-dev` à `1.0.0`.
+
+### Ajouté
+
+- `readme.txt` au format du répertoire WordPress.org, avec le `Stable tag`
+  aligné sur l'en-tête du plugin et sur `RCIPR_VERSION` — `bin/build.sh`
+  refuse de construire une archive dont les trois divergent.
+- `docs/utilisation.md`, la documentation utilisateur. Elle énonce ce que le
+  plugin **décide** là où la documentation amont ne définit rien, O-06 au
+  premier chef : dans une plage à bornes jokers, la borne gauche prend sa
+  valeur minimale et la borne droite sa valeur maximale. C'est ce qui restait
+  dû sur ce point ouvert.
+- Trois tests de désinstallation : les listes de niveau et de contenu partent
+  avec les réglages quand la suppression est demandée, survivent quand elle ne
+  l'est pas, et les métadonnées des autres — à commencer par les restrictions
+  de la dépendance — ne sont jamais touchées.
+
+### Corrigé
+
+- **La désinstallation ne supprimait que l'option du site.** §6.6 range les
+  réglages, les métadonnées de niveau et celles de contenu dans la même ligne :
+  le test écrit pour le vérifier a échoué. Une liste de niveau oubliée est un
+  réglage orphelin, et les identifiants de niveau viennent d'une table
+  auto-incrémentée — elle finirait par s'appliquer à un autre niveau que celui
+  pour lequel elle avait été écrite. Les métadonnées de contenu partent par
+  `delete_post_meta_by_key()`, celles de niveau par l'interface de la
+  dépendance ; à défaut, par le nom de table qu'elle déclare, vérifié avant
+  d'être interpolé. Si ni l'un ni l'autre n'est disponible, rien n'est
+  supprimé : deviner un nom de table pour y lancer une suppression serait pire
+  que de laisser des métadonnées derrière soi.
+
+---
 
 Lot 9 : restrictions de taxonomie. **Le lot s'est réduit en cours de route**,
 parce que l'exécution a montré que l'essentiel était déjà couvert.

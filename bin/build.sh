@@ -53,6 +53,10 @@ log "Autoloader d'exécution"
 composer install --no-dev --classmap-authoritative --quiet
 [ -d vendor ] && cp -R vendor "$TARGET/"
 
+# Le §14.2 n'embarque que le strict nécessaire au chargement automatique :
+# les exécutables de Composer n'en font pas partie.
+rm -rf "$TARGET/vendor/bin"
+
 # Restaure l'outillage de développement.
 composer install --quiet
 

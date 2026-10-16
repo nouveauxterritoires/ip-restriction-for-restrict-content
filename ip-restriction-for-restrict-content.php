@@ -3,7 +3,7 @@
  * Plugin Name:       IP Restriction for Restrict Content
  * Plugin URI:        https://github.com/nouveaux-territoires/ip-restriction-for-restrict-content
  * Description:       Restriction par adresse IP pour Restrict Content et Restrict Content Pro : listes d'autorisation qui contournent les restrictions de contenu, et liste de blocage qui refuse l'inscription. Portées globale, par niveau d'adhésion et par contenu. Extension indépendante, ni développée ni approuvée par les éditeurs de Restrict Content ou de Restrict Content Pro.
- * Version:           0.1.0-dev
+ * Version:           1.0.0
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            Nouveaux Territoires
@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
 /*
  * Forme courte du préfixe pour les constantes, conformément à ADR-0001.
  */
-const RCIPR_VERSION = '0.1.0-dev';
+const RCIPR_VERSION = '1.0.0';
 const RCIPR_MIN_PHP = '8.1';
 const RCIPR_MIN_WP  = '6.4';
 
