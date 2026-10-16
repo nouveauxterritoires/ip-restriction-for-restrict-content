@@ -88,6 +88,7 @@ dernière valeur qu'aucun proxy de confiance n'a pu inventer.
 | Contournement de portée | Une autorisation de niveau lue comme globale ouvre tout le site | FNC-04 : test de portée croisée, le test central de la suite `access` |
 | Empoisonnement de cache de pages | Une réponse élargie servie à tous les visiteurs suivants | SEC-14 |
 | Contournement par identifiant sur la boîte de métadonnées | Un contributeur pose une autorisation sur un contenu qu'il ne peut pas modifier | SEC-02, avec son test de contournement |
+| Effet indirect de la neutralisation d'une restriction de terme | Un autre code — un écran d'administration, un autre greffon — lit un terme non restreint pendant la même requête et agit en conséquence | §5.1.1 et V-06 : la couverture des archives de terme est optionnelle et désactivée par défaut, et bornée au terme interrogé par la requête ; trois tests du lot 9 établissent qu'un autre terme, une requête d'administration et une requête hors archive sortent intacts |
 | Élévation de privilèges par l'autorisation | Une adresse autorisée obtiendrait plus que la lecture | SEC-13 |
 | Injection par le message personnalisé | Du balisage injecté dans une page publique | SEC-03 |
 | Fuite d'information par le message de blocage | Un attaquant apprend qu'une liste existe et déduit son contenu par essais | SEC-17 |

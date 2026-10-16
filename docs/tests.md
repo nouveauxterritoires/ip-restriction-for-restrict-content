@@ -3,8 +3,8 @@
 Référence : cahier des charges §11. Ce document détaille ce que chaque suite
 doit établir, les fixtures nécessaires et les seuils.
 
-**État au lot 8** : les cinq suites sont peuplées — `unit` (79 tests),
-`integration` (26), `contract` (36), `matching` (143) et `access` (102). Chacune
+**État au lot 9** : les cinq suites sont peuplées — `unit` (79 tests),
+`integration` (26), `contract` (36), `matching` (143) et `access` (121). Chacune
 a son job d'intégration continue, et la suite `contract` est exécutée par les
 jobs `contract-free` et `contract-pro` : **les deux ont tourné et sont verts**
 depuis le 15 octobre 2026, ce qui a levé le point ouvert V-10.
@@ -215,9 +215,9 @@ qu'ici serait mentir sur ce qu'ils établissent.
 
 ### 2.5 `access` — le comportement observable
 
-**Peuplée aux lots 4 à 8** : `SettingsScreenTest`, `RejectionNoticeTest`,
+**Peuplée aux lots 4 à 9** : `SettingsScreenTest`, `RejectionNoticeTest`,
 `ContentAccessTest`, `ExtensionPointsTest`, `RegistrationBlockTest`,
-`LevelScopeTest` et `PostScopeTest` — 102 tests. Les tests d'accès passent par
+`LevelScopeTest`, `PostScopeTest` et `TermScopeTest` — 121 tests. Les tests d'accès passent par
 `rcp_user_can_access()`, la fonction de la dépendance, et non par la politique
 interne : ce qui compte est le comportement observable, moteur et branchement
 compris. C'est aussi la suite qui a levé V-01.
@@ -227,8 +227,15 @@ qu'un écran qui accorde des accès est une surface d'attaque : qui peut y écri
 peut ouvrir tout le contenu restreint du site. L'ordre des contrôles y est testé
 pour lui-même — une requête à la fois sans droit et sans nonce doit être refusée
 **pour le nonce** (SEC-01) — et la capacité l'est **sur l'objet enregistré** :
-c'est tout l'objet du test de contournement par identifiant (SEC-02). Le reste
-du tableau ci-dessous attend le lot 9.
+c'est tout l'objet du test de contournement par identifiant (SEC-02).
+
+`TermScopeTest` est le seul fichier de la suite dont une partie des tests
+mesure un effet **non souhaité** : V-06 demandait de constater si neutraliser
+les restrictions d'un terme altère les autres lectures de la même requête, et la
+réponse est oui pour le terme interrogé. Ces tests figent donc les **bornes** de
+l'effet — un autre terme, une requête d'administration et une requête hors
+archive sortent intacts — et la raison pour laquelle la couverture des archives
+de terme est optionnelle et désactivée par défaut (§5.1.1).
 
 **Ce qu'elle doit établir**, sur un site réel, avec des niveaux et des contenus
 réellement restreints :
@@ -240,6 +247,7 @@ réellement restreints :
 | Non-transitivité | **Le test central, livré au lot 7.** Autorisation sur « Argent », contenu réservé à « Or » : refusé. Et la contrepartie : la même autorisation ouvre bien les contenus d'« Argent » |
 | Cumul | **Livré au lot 7**, premier lot où l'exigence est vérifiable : une seule portée satisfaite suffit, deux n'ont pas d'effet supplémentaire, et la portée rapportée est la plus large — c'est elle qui explique l'accès |
 | Portée par contenu | **Livré au lot 8** : autorisation sur le contenu A, A est lisible et B ne l'est pas — FNC-04 pour la seconde portée. Et la liste du contenu se range en métadonnée protégée, vérifiée par `is_protected_meta()` |
+| Restrictions de taxonomie | **Livré au lot 9** : un contenu restreint par sa catégorie est couvert par le branchement du lot 5, sans filtre grossier (JE-027) ; la liste du niveau exigé par le terme couvre ses contenus, celle d'un autre niveau non. L'archive du terme elle-même s'ouvre sous l'option du §5.1.1, et trois tests bornent l'effet indirect que V-06 a constaté |
 | Adhésion expirée | **V-01, levé dans ses deux volets** : au lot 5 pour l'autorisation globale, au lot 7 pour celle posée sur le niveau, établis avec un client et une adhésion au statut `expired` (JE-022) |
 | Blocage d'inscription | La soumission est rejetée, et le message apparaît par le canal de la dépendance |
 | Asymétrie | Une adresse en liste de blocage seule n'obtient **aucun** accès au contenu, et une adresse en liste d'autorisation seule n'est **pas** bloquée à l'inscription (A-01) |

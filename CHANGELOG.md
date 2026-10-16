@@ -5,6 +5,60 @@ Versionnage [sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+Lot 9 : restrictions de taxonomie. **Le lot s'est réduit en cours de route**,
+parce que l'exécution a montré que l'essentiel était déjà couvert.
+
+### Ajouté
+
+- Les listes des niveaux qu'une **catégorie** exige couvrent les contenus de
+  cette catégorie, lorsque le contenu ne porte pas de restriction propre. La
+  précédence est celle de la dépendance — elle ne consulte les restrictions de
+  terme que faute de restriction de contenu —, pas une invention de notre part.
+- Couverture des **archives** de catégorie et d'étiquette, en option
+  **désactivée par défaut** (`covers_taxonomy_terms`), avec quatre garde-fous :
+  non branchée sans l'option, non branchée sans liste d'autorisation, adresse
+  résolue seulement au moment du filtre, et effet borné au terme réellement
+  interrogé par la requête — jamais un autre terme, jamais une requête
+  d'administration.
+- Action `…_term_restriction_lifted`, distincte de l'octroi d'accès : la chose
+  faite est distincte, et un exploitant qui journalise a le droit de savoir
+  laquelle des deux s'est produite.
+- `Integration\Visitor_Address` : la résolution de l'adresse, qui avait deux
+  clients à partir de ce lot, est extraite plutôt que recopiée — et reste
+  résolue une seule fois par requête, donc le filtre `client_address` est
+  appliqué une fois.
+- `.coverage-baseline` passe de 99,46 % à 99,50 %.
+
+### Levé
+
+- **Point ouvert V-06, tranché dans le sens défavorable.** Le protocole prévu a
+  été exécuté : pendant une requête d'archive, une seconde lecture des
+  restrictions du terme interrogé renvoie bien un terme non restreint. Le cahier
+  des charges avait prévu cette issue, et sa conséquence est appliquée — la
+  couverture des archives devient optionnelle et désactivée par défaut. Trois
+  tests tiennent les bornes de l'effet, dont celui qui compte le plus : l'écran
+  d'édition d'un terme lit ses restrictions intactes, sans quoi un
+  enregistrement depuis cet écran effacerait la restriction.
+
+### Corrigé
+
+- **§5.1.1 annonçait plus large que la réalité.** Un contenu restreint par sa
+  catégorie passe bien par `rcp_member_can_access` — la restriction de terme est
+  évaluée à l'intérieur de la décision de la dépendance, dont le résultat est
+  filtré (JE-027). Il est donc couvert par le branchement du lot 5, sans aucun
+  filtre grossier et sans aucun risque d'effet indirect. Seule l'archive du
+  terme était réellement hors d'atteinte.
+
+### Documentation
+
+- JE-027 : un contenu restreint par sa catégorie passe par le filtre de
+  décision — une contrainte documentée de longue date et jamais exercée décrivait
+  l'idée qu'on s'en faisait.
+- JE-028 : V-06 tranché et borné, et `rcp_get_term_restrictions()` renvoie
+  `false` — non un tableau vide — pour un terme sans métadonnée.
+
+---
+
 Lot 8 : portée par contenu. **Les trois portées d'autorisation existent**, et
 aucune des deux étroites n'est transitive.
 

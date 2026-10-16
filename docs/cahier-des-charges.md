@@ -627,6 +627,26 @@ résolution de l'adresse, et il n'est jamais branché pour une portée qui ne
 concerne pas le terme demandé. Le point ouvert V-06 porte la vérification en
 recette de l'absence d'effet indirect.
 
+**Constat du lot 9, qui réduit cette section à beaucoup moins qu'elle
+n'annonçait.** Deux choses étaient confondues ici, et l'exécution les sépare :
+
+- Les **contenus** d'une catégorie restreinte n'ont pas besoin de ce
+  mécanisme. Leur décision passe bien par `rcp_member_can_access` — la
+  restriction de terme est évaluée *dans* `RCP_Membership::can_access()`, dont
+  le résultat est filtré —, donc par le branchement du lot 5 (JE-027). C'est
+  l'essentiel du besoin, et il est couvert sans prendre aucun risque.
+- Seule l'**archive du terme** reste hors d'atteinte, parce que
+  `redirects.php:33` y appelle `rcp_user_can_access_term()`, qui ne filtre
+  rien.
+
+Et V-06 est tranché, par son propre protocole : la seconde lecture des
+restrictions du terme demandé, pendant la même requête, **est** altérée. Le
+cahier des charges avait prévu cette issue — la couverture des archives de terme
+est donc une fonctionnalité **optionnelle, désactivée par défaut**, et un
+quatrième garde-fou borne l'effet au terme réellement interrogé par la requête :
+un autre terme, et le même terme sur une requête d'administration, sortent
+intacts.
+
 Ce point est signalé ici parce qu'il est exactement le genre de contrainte qu'on
 découvre autrement à la moitié du lot 2.
 
@@ -756,7 +776,7 @@ que par un besoin de requêtage ou de volume : il n'y en a aucun. Voir ADR-0003.
 
 | Option | Type | Contenu | Justification |
 |---|---|---|---|
-| `ip_restriction_for_restrict_content_settings` | tableau | Liste d'autorisation globale, liste de blocage, message d'erreur, en-tête de transfert retenu, proxys de confiance | Un seul enregistrement, lu à chaque requête : une option unique est chargée avec les options automatiques et évite quatre lectures |
+| `ip_restriction_for_restrict_content_settings` | tableau | Liste d'autorisation globale, liste de blocage, message d'erreur, en-tête de transfert retenu, proxys de confiance, suppression à la désinstallation, couverture des archives de terme (`covers_taxonomy_terms`, fausse par défaut — §5.1.1) | Un seul enregistrement, lu à chaque requête : une option unique est chargée avec les options automatiques et évite quatre lectures |
 | `ip_restriction_for_restrict_content_version` | chaîne | Version du schéma de réglages | Permet une migration de forme sans deviner l'état antérieur |
 
 Les deux listes sont stockées **dans des clés distinctes** du même tableau, et
@@ -901,6 +921,7 @@ par un test.
 | Action | Paramètres | Usage |
 |---|---|---|
 | `ip_restriction_for_restrict_content_access_granted` | `string $address` expurgée, `string $scope`, `int $post_id` | Journalisation par l'exploitant |
+| `ip_restriction_for_restrict_content_term_restriction_lifted` | `string $address` expurgée, `int $term_id`, `string $scope`, `int|null $scope_id` | Journalisation : une restriction de terme vient d'être neutralisée. Distincte de l'octroi d'accès, parce que la chose faite est distincte — ici le plugin modifie une donnée pour la durée de la requête (§5.1.1) |
 | `ip_restriction_for_restrict_content_registration_block_applied` | `string $address` expurgée | Idem |
 
 **Correction apportée au lot 6.** Ce tableau donnait à l'action du blocage le
@@ -1224,7 +1245,7 @@ si son attestation a tourné.
 | **6 — livré** | Branchement sur `rcp_form_errors`, message personnalisé, échappement | Suite `access` : 59 tests. FNC-07 à FNC-12 établis par l'exécution du traitement réel d'inscription ; A-01 vérifiée dans les deux sens — une adresse bloquée n'obtient aucun accès au contenu, une adresse autorisée n'est pas bloquée à l'inscription ; A-02 et A-03 livrées au lot 4 ; SEC-03 et SEC-17 couvertes. L'échappement est la seule barrière : la dépendance interpole les messages sans les échapper (JE-023) |
 | **7 — livré** | Champ sur les écrans de niveau, stockage en métadonnée de niveau, décision limitée aux contenus du niveau | Suite `access` : 81 tests. FNC-02, FNC-25 et **surtout FNC-04** — le test de portée croisée : une autorisation sur « Argent » ouvre les contenus d'« Argent » et pas ceux d'« Or ». FNC-06 est enfin vérifiable et vérifié, deux portées existant désormais. V-01 est levé dans son second volet. ADR-0004 est corrigé : la dépendance ne supprime **pas** les métadonnées d'un niveau supprimé, et le plugin le fait (JE-025) |
 | **8 — livré** | Boîte de métadonnées greffée dans celle de la dépendance, stockage en métadonnée de publication, nonce et capacité | Suite `access` : 102 tests. FNC-03 et FNC-26 établis par l'exécution ; **FNC-04 l'est pour la seconde portée** — une autorisation posée sur un contenu n'en ouvre aucun autre ; **SEC-02 est couverte par son test de contournement** : la même soumission authentique est refusée sur un contenu que l'auteur ne peut pas modifier et acceptée sur le sien, ce qui établit que c'est bien l'identifiant qui a été refusé. FNC-22 est signalée sur l'écran d'édition, là où la ligne a été saisie (JE-026) |
-| **9 — taxonomies** | Couverture des restrictions de terme par `rcp_get_term_restrictions`, avec les garde-fous du §5.1.1 | Suite `access` : un contenu restreint par catégorie est accessible à une adresse autorisée ; aucun effet indirect constaté sur la même requête. V-06 tranché |
+| **9 — livré** | Couverture des contenus restreints par terme sans filtre grossier, et des archives de terme par `rcp_get_term_restrictions` sous quatre garde-fous, en option désactivée par défaut | Suite `access` : 121 tests. Un contenu restreint par catégorie est accessible à une adresse autorisée **par le branchement du lot 5**, ce que JE-027 a établi par l'exécution ; la liste d'un niveau exigé par le terme couvre ses contenus, et celle d'un autre niveau non (FNC-04). V-06 est tranché par son protocole : l'effet indirect **existe** sur le terme interrogé, d'où l'option désactivée par défaut, et trois tests bornent l'effet — un autre terme, une requête d'administration et une requête hors archive sortent intacts |
 | **10 — livraison** | Désinstallation, `.pot`, `readme.txt`, construction de l'archive, documentation utilisateur | `make build` ; ouverture de l'archive : aucun fichier de test, aucune dépendance de développement ; `make check-coverage` au-dessus du plancher |
 
 Ce qui n'est **pas** dans ces lots, et qui doit le rester : une interface
@@ -1311,7 +1332,7 @@ section est ce qui empêche de présenter une hypothèse comme un acquis.
 | **V-03** | Étendue du support IPv6 amont | La documentation annonce « Both IPv4 and IPv6 are supported » sans un seul exemple IPv6 | Idem : non vérifiable sans lire le code amont. O-05 tranche pour ce plugin, et la documentation utilisateur dira exactement ce qui est accepté |
 | **V-04** | Valeurs par défaut des champs amont | Déductible — champs vides — mais non affirmé par la documentation | Sans objet pour ce plugin : FNC-27 l'impose indépendamment de l'amont |
 | **V-05** | Existence d'un hook ou d'un filtre propre à l'add-on amont | Aucun n'est mentionné dans la documentation officielle, et aucune page de référence développeur n'a été trouvée | Sans objet : le plugin expose ses propres points d'extension (§8) et ne prétend à aucune compatibilité de hooks avec l'amont |
-| **V-06** | Effet indirect du filtre `rcp_get_term_restrictions` | Le filtre existe (`core/includes/misc-functions.php:998`), mais il modifie une donnée et non une décision (§5.1.1) | Au lot 9 : instrumenter une requête qui interroge deux fois les restrictions du même terme, une fois pour la décision d'accès et une fois pour un autre usage, et constater si la seconde lecture est altérée. Si elle l'est, la couverture des taxonomies passe en fonctionnalité optionnelle, désactivée par défaut |
+| **V-06** | Effet indirect du filtre `rcp_get_term_restrictions` | **Tranché au lot 9, et dans le sens défavorable.** Le protocole prévu a été exécuté : pendant une requête d'archive, une seconde lecture des restrictions du terme interrogé renvoie bien un terme non restreint. La conséquence prévue s'applique — la couverture des archives de terme est optionnelle et désactivée par défaut —, et l'effet est borné au terme réellement interrogé : un autre terme, une requête d'administration et une requête hors archive sortent intacts (trois tests). Les **contenus** d'un terme restreint, eux, sont couverts sans ce filtre (JE-027) | Les tests restent et changent de nature : ils surveillent les bornes de l'effet, et le jour où la dépendance filtrera la décision de terme, la suite `contract` le signalera |
 | **V-07** | ~~Le filtre `rcp_member_can_access` est-il appliqué à l'identique dans la variante **gratuite** ?~~ | **Levé le 22 septembre 2026.** La source de la variante gratuite (RC 4.0.4) est lisible en local : le commentaire est à `core/includes/member-functions.php:100` et le `apply_filters` à la ligne 101, aux mêmes positions que dans la variante commerciale. Les cinq applications du chemin connecté et les trois du chemin historique sont également aux mêmes lignes (§5.1) | Le test de contrat reste, mais il n'établit plus une inconnue : il **surveille** une propriété établie. La lecture prouve que le code est là ; seule l'exécution prouve qu'il est atteint sur le chemin qui nous intéresse |
 | **V-08** | Interaction avec les caches de pages et les CDN | Rien dans la documentation amont | Au lot 5 : servir un contenu restreint à une adresse autorisée derrière un cache de pages, puis le redemander depuis une adresse non autorisée. SEC-14 pose l'attendu ; la recette établit que le marquage de non-cachabilité est bien honoré par les caches courants |
 | **V-09** | Absence de chevauchement avec les redirections personnalisées | La recherche conclut que l'add-on de redirection ne traite que la redirection après connexion et après inscription, par niveau d'adhésion | Sans objet pour ce plugin : les deux périmètres sont disjoints, et §0.2 le pose en hors-périmètre |

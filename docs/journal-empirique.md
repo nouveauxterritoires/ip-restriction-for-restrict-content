@@ -977,3 +977,68 @@ un enregistrement programmatique ; et elle vérifie `edit_page` pour les pages l
 où `current_user_can( 'edit_post', $id )` suffit, WordPress résolvant la
 capacité par le type du contenu. Nous n'utilisons donc qu'`edit_post`, et un
 test établit qu'un auteur peut modifier le sien et pas celui d'un autre.
+
+---
+
+## JE-027 — Un contenu restreint par sa catégorie passe bien par le filtre de décision
+
+**Date** : 16 octobre 2026 · **Contexte** : lot 9, restrictions de taxonomie.
+
+Le cahier des charges §5.1.1, écrit avant le lot 2, traitait « restriction de
+taxonomie » comme une seule chose hors d'atteinte du filtre de décision, et
+réservait au lot 9 un mécanisme grossier pour la couvrir : neutraliser les
+restrictions du terme.
+
+**L'exécution sépare deux cas, et le premier n'a besoin de rien.** Un article
+rangé dans une catégorie restreinte, demandé par un visiteur dont l'adresse est
+sur la liste globale : `rcp_user_can_access()` renvoie `false` sans le plugin et
+`true` avec, par le seul branchement du lot 5. La raison est dans le code de la
+dépendance : la restriction de terme est évaluée **à l'intérieur** de
+`RCP_Membership::can_access()` et de `rcp_user_can_access()`
+(`core/includes/misc-functions.php`, `core/includes/memberships/class-rcp-membership.php:2952`),
+dont le résultat est ensuite filtré par `rcp_member_can_access`. Le filtre est
+donc atteint, avec `false`, exactement comme pour une restriction par niveau.
+
+Ce qui reste hors d'atteinte est **l'archive du terme** :
+`core/includes/redirects.php:33` y appelle `rcp_user_can_access_term()`, qui
+n'applique aucun filtre — l'absence établie au lot 1 par la suite `contract`.
+
+**Conséquences.** Le lot 9 se réduit à deux choses : consulter aussi les listes
+des niveaux qu'un terme exige lorsque le contenu n'a pas de restriction propre —
+la précédence est celle de la dépendance, pas une invention de notre part —, et
+couvrir l'archive du terme par le mécanisme grossier, qui devient donc
+optionnel. §5.1.1 est corrigé en ce sens.
+
+La morale est celle du §2 des conventions : une contrainte documentée depuis
+longtemps, et jamais exercée, décrit l'idée qu'on s'en faisait.
+
+---
+
+## JE-028 — V-06 est tranché dans le sens défavorable, et borné
+
+**Date** : 16 octobre 2026 · **Contexte** : lot 9, archives de terme.
+
+Le protocole prévu par V-06 a été exécuté tel qu'il était écrit : pendant une
+requête d'archive, interroger deux fois les restrictions du terme demandé, une
+fois pour la décision d'accès et une fois pour un autre usage.
+
+**La seconde lecture est altérée.** C'est inévitable : `rcp_get_term_restrictions`
+filtre une donnée, et un filtre accroché pour la requête l'est pour tous ses
+lecteurs. Le cahier des charges avait prévu l'issue — « si elle l'est, la
+couverture des taxonomies passe en fonctionnalité optionnelle, désactivée par
+défaut » — et c'est ce qui est livré, réglage `covers_taxonomy_terms`.
+
+**Ce qui est bornable l'a été**, et c'est le quatrième garde-fou : le filtre ne
+neutralise que les restrictions du terme **réellement interrogé par la requête**
+(`is_category() || is_tag() || is_tax()` et `get_queried_object_id()`), et jamais
+sur une requête d'administration. Trois tests tiennent ces bornes, dont le plus
+important : l'écran d'édition d'un terme lit ses restrictions intactes. Sans
+cette borne, un administrateur enregistrant un terme depuis un écran qui le croit
+non restreint en effacerait la restriction — une perte de configuration causée
+par un plugin d'accès, exactement ce que le §4.6 classe comme le pire.
+
+Un constat secondaire de la même lecture : `rcp_get_term_restrictions()` renvoie
+`false`, et non un tableau vide, pour un terme sans métadonnée. Le filtre laisse
+donc passer tel quel ce qui n'est pas un tableau — sans quoi il changerait le
+type de la donnée pour tous ses lecteurs.
+

@@ -9,10 +9,11 @@ Content ou de Restrict Content Pro.
 
 ## État réel du projet
 
-**Les trois portées d'autorisation existent.** Les lots 0 à 8 sont livrés : une
+**Toutes les fonctionnalités sont livrées.** Les lots 0 à 9 sont faits : une
 adresse peut être autorisée globalement, **par niveau d'adhésion** ou **par
-contenu**, et une adresse de la liste de blocage ne peut pas s'inscrire. Il
-manque la couverture des restrictions par taxonomie. Ce qui est livré et
+contenu**, les contenus restreints par catégorie sont couverts, et une adresse de
+la liste de blocage ne peut pas s'inscrire. Il reste le lot de livraison —
+`readme.txt`, archive, documentation utilisateur. Ce qui est livré et
 vérifié :
 
 | Livré | Ce qui l'atteste |
@@ -40,12 +41,14 @@ vérifié :
 | Les deux listes ne partagent ni stockage, ni chemin de décision, ni instance (A-01) | `src/Policy/`, tests sur les signatures |
 | Portée par niveau d'adhésion : champ sur les écrans de niveau, stockage en métadonnée, et **non-transitivité** — une autorisation sur un niveau n'ouvre aucun autre niveau | `src/Admin/Level_Field.php`, `src/Policy/Access_Policy.php`, suite `access` |
 | Portée par contenu : champ dans la boîte de restriction de la dépendance, stockage en métadonnée protégée, nonce **et** capacité vérifiée sur le contenu enregistré — un identifiant substitué dans la requête ne pose aucune autorisation | `src/Admin/Post_Metabox.php`, `src/Policy/Access_Policy.php`, suite `access` |
-| Les cinq suites de tests sont peuplées — 386 tests | `phpunit.xml.dist`, `tests/` |
+| Contenus restreints par catégorie : couverts par le même branchement que le reste, sans toucher aux données de la catégorie | `src/Integration/Content_Access.php`, suite `access` |
+| Archives de catégorie restreintes : couvertes en **option désactivée par défaut**, parce que la dépendance n'offre là aucun point de décision et que la seule voie altère une donnée partagée | `src/Integration/Term_Access.php`, suite `access`, §5.1.1 |
+| Les cinq suites de tests sont peuplées — 405 tests | `phpunit.xml.dist`, `tests/` |
 | Scanners de sécurité et d'hygiène, bloquants | `bin/scan-secrets.sh`, `bin/scan-placeholders.sh` |
 | Intégration continue : lint, analyse statique, scanners, suites peuplées, seuil de couverture | `.github/workflows/ci.yml` |
 
-**Rien d'autre.** La couverture des restrictions par taxonomie est le lot 9, la
-livraison le lot 10.
+**Rien d'autre.** Le lot 10 — désinstallation vérifiée, `readme.txt`, archive de
+distribution, documentation utilisateur — reste à faire.
 
 ### Les trois portées ne se cumulent pas comme on le croit
 
@@ -54,6 +57,19 @@ livraison le lot 10.
 | La liste globale | Tout contenu restreint du site, tous niveaux confondus | — |
 | Un niveau d'adhésion | Les contenus restreints **à ce niveau** | Les contenus d'un autre niveau, ni ceux restreints autrement (rôle, niveau d'accès) |
 | Un contenu | Ce seul contenu | Aucun autre contenu, même du même niveau ou du même auteur |
+
+Une catégorie ne porte pas de liste. Un contenu restreint **par sa catégorie**
+est ouvert par la liste globale, ou par celle d'un niveau que cette catégorie
+exige : la restriction de catégorie est évaluée par la dépendance à l'intérieur
+de sa décision, et c'est cette décision que le plugin élargit.
+
+La page d'**archive** d'une catégorie restreinte est un cas à part, et la seule
+fonctionnalité optionnelle du plugin. La dépendance n'y offre aucun point de
+décision : la seule voie est de neutraliser la restriction de la catégorie
+demandée pendant la requête, et tout autre code qui relit cette restriction
+pendant cette requête la verra donc vide. L'option est désactivée par défaut, et
+l'effet est borné à la catégorie réellement demandée — jamais une autre, jamais
+un écran d'administration.
 
 Une autorisation de niveau n'est **pas** une autorisation globale restreinte :
 c'est une autorisation qui ne s'applique qu'aux contenus de ce niveau. Un
