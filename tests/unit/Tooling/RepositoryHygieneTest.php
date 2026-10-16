@@ -301,4 +301,28 @@ final class RepositoryHygieneTest extends TestCase {
 			);
 		}
 	}
+
+	/**
+	 * Le catalogue de traduction ne renvoie à aucune copie de construction.
+	 *
+	 * `wp i18n make-pot` parcourt le dossier courant : une construction laissée
+	 * dans `dist/` y double chaque chaîne, avec des références au chemin de la
+	 * copie. Le catalogue ainsi obtenu ne vaut que sur la machine qui l'a
+	 * produit, et le job `i18n` le refuse puisqu'il part d'une copie propre.
+	 * `make pot` exclut désormais `dist`, et ce test interdit de committer un
+	 * catalogue produit avant cette exclusion.
+	 *
+	 * @return void
+	 */
+	public function test_the_catalogue_references_no_build_copy(): void {
+		$catalogue = (string) file_get_contents(
+			$this->root() . '/languages/ip-restriction-for-restrict-content.pot'
+		);
+
+		$this->assertSame(
+			0,
+			preg_match( '/^#: dist\\//m', $catalogue ),
+			'Le .pot renvoie à dist/ : régénérez-le avec « make pot ».'
+		);
+	}
 }
