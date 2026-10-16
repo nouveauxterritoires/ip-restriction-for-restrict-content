@@ -383,7 +383,7 @@ jobs:
           coverage: none
           tools: composer:v2, wp-cli
       - name: Régénération
-        run: wp i18n make-pot . /tmp/attendu.pot --slug=ip-restriction-for-restrict-content --allow-root
+        run: wp i18n make-pot . /tmp/attendu.pot --slug=ip-restriction-for-restrict-content --exclude=dist --allow-root
       - name: Comparaison
         # `POT-Creation-Date` change à chaque génération : seule la différence
         # des chaînes compte.

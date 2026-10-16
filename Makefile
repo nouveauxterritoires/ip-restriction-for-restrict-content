@@ -100,7 +100,7 @@ stubs: ## Régénère stubs/ depuis la dépendance installée (diff à relire)
 # --- Livraison ----------------------------------------------------------------
 
 pot: ## Régénère languages/ip-restriction-for-restrict-content.pot
-	$(CLI) "cd $(PLUGIN_PATH) && wp i18n make-pot . languages/ip-restriction-for-restrict-content.pot --slug=ip-restriction-for-restrict-content --allow-root"
+	$(CLI) "cd $(PLUGIN_PATH) && wp i18n make-pot . languages/ip-restriction-for-restrict-content.pot --slug=ip-restriction-for-restrict-content --exclude=dist --allow-root"
 
 build: ## Produit le zip distribuable dans dist/
 	bash bin/build.sh
